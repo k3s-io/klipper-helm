@@ -90,13 +90,11 @@ name: arm
 
 platform:
   os: linux
-  arch: arm64
+  arch: arm
 
 steps:
 - name: build
   image: rancher/dapper:v0.4.1
-  environment:
-    DAPPER_HOST_ARCH: arm
   commands:
   - dapper ci
   volumes:
@@ -106,7 +104,7 @@ steps:
 - name: docker-publish
   image: plugins/docker
   settings:
-    dockerfile: package/Dockerfile.arm
+    dockerfile: package/Dockerfile
     password:
       from_secret: docker_password
     repo: "rancher/klipper-helm"
