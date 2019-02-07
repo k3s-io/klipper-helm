@@ -11,10 +11,10 @@ fi
 helm repo update
 
 
-JQ_CMD='"\(.Releases[0].AppVersion) \(.Releases[0].Status)"'
+JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
 LINE="$(helm ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD")"
-INSTALLED_VERSION=$(echo $LINE | awk '{print $1}')
-STATUS=$(echo $LINE | awk '{print $2}')
+INSTALLED_VERSION=$(echo $LINE | cut -f1 -d,)
+STATUS=$(echo $LINE | cut -f2 -d,)
 
 if [ -e /config/values.yaml ]; then
     VALUES="--values /config/values.yaml"
@@ -24,11 +24,12 @@ if [ "$1" = "delete" ]; then
     if [ -z "$INSTALLED_VERSION" ]; then
         exit
     fi
+    helm delete $NAME || true
     helm "$@"
     exit
 fi
 
-if [ -z "$INSTALLED_VERSION" ]; then
+if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
     helm "$@" $VALUES
     exit
 fi
