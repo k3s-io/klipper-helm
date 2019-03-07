@@ -35,7 +35,10 @@ if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
 fi
 if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" = "$VERSION" ]; then
     if [ "$STATUS" = "DEPLOYED" ]; then
-        echo Already installed $NAME
+        echo Already installed $NAME, upgrading
+        # We assume the args are always install --name foo CHART
+        shift 2
+        helm upgrade "$@" $VALUES
         exit
     fi
 fi
