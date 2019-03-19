@@ -1,5 +1,11 @@
 #!/bin/bash
-set -e -x
+
+set -e -v
+eval set -- $(sed -e "s/%{KUBERNETES_API}%/${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}/g" <<< "${@@Q}")
+set +v -x
+
+cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-certificates/
+update-ca-certificates
 
 tiller --listen=127.0.0.1:44134 --storage=secret &
 export HELM_HOST=127.0.0.1:44134
