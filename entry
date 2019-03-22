@@ -10,7 +10,8 @@ update-ca-certificates
 tiller --listen=127.0.0.1:44134 --storage=secret &
 export HELM_HOST=127.0.0.1:44134
 
-helm init --client-only
+helm init --skip-refresh --client-only
+helm repo update --strict || helm repo remove stable
 if [ -n "$REPO" ]; then
     helm repo add ${NAME%%/*} $REPO
 fi
