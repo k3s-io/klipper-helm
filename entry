@@ -8,7 +8,7 @@ cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-cert
 update-ca-certificates
 
 # migrate old releases to v3
-helm 2to3 convert --delete-v2-releases -s secret $NAME
+helm 2to3 convert --delete-v2-releases -s secrets $NAME
 
 # adding stable repo since, stable is removed in v3
 helm repo add stable https://kubernetes-charts.storage.googleapis.com/
