@@ -61,7 +61,7 @@ fi
 # We assume the args are always install --name foo CHART
 helm "$@" $VALUES
 
-func generate_kubeconfig {
+function generate_kubeconfig {
   mkdir ~/.kube/
   TOKEN=$(cat var/run/secrets/kubernetes.io/serviceaccount/token)
   echo "
