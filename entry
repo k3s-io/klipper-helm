@@ -7,19 +7,16 @@ set +v -x
 cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-certificates/
 update-ca-certificates
 
-tiller --listen=127.0.0.1:44134 --storage=secret &
-export HELM_HOST=127.0.0.1:44134
-
-helm init --skip-refresh --client-only
-helm repo update --strict || helm repo remove stable
+# adding stable repo since, stable is removed in v3
+helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+helm repo update
 if [ -n "$REPO" ]; then
     helm repo add ${NAME%%/*} $REPO
+    helm repo update
 fi
-helm repo update
 
-
-JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
-LINE="$(helm ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD")"
+JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
+LINE="$(helm ls --all -f "^$NAME\$" --output json | jq -r "$JQ_CMD")"
 INSTALLED_VERSION=$(echo $LINE | cut -f1 -d,)
 STATUS=$(echo $LINE | cut -f2 -d,)
 
@@ -27,11 +24,10 @@ if [ -e /config/values.yaml ]; then
     VALUES="--values /config/values.yaml"
 fi
 
-if [ "$1" = "delete" ]; then
+if [ "$1" = "uninstall" ]; then
     if [ -z "$INSTALLED_VERSION" ]; then
         exit
     fi
-    helm delete $NAME || true
     helm "$@"
     exit
 fi
@@ -41,22 +37,21 @@ if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
     exit
 fi
 if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" = "$VERSION" ]; then
-    if [ "$STATUS" = "DEPLOYED" ]; then
+    if [ "$STATUS" = "deployed" ]; then
         echo Already installed $NAME, upgrading
-        # We assume the args are always install --name foo CHART
+        # We assume the args are always install foo CHART
         shift 2
-        helm upgrade "$@" $VALUES
+        helm upgrade $NAME "$@" $VALUES
         exit
     fi
 fi
 
-if [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "DELETED" ]; then
-    helm delete --purge $NAME
-    echo Deleted
+if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
+    helm uninstall $NAME
+    echo Uninstalled
     helm "$@" $VALUES
     exit
 fi
 
 # We assume the args are always install --name foo CHART
-shift 2
-helm upgrade "$@" $VALUES
+helm "$@" $VALUES
