@@ -1,5 +1,5 @@
 FROM alpine:3.8 as extract
-RUN apk add -U curl ca-certificates
+RUN apk add -U curl ca-certificates git
 ARG ARCH
 RUN curl https://get.helm.sh/helm-v3.0.0-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 
