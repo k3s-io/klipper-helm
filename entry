@@ -1,5 +1,83 @@
 #!/bin/bash
 
+helm_update() {
+  if [ "$HELM" == "helm_v3" ]; then
+    LINE="$($HELM ls --all -f "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
+  else
+    LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
+  fi
+  INSTALLED_VERSION=$(echo $LINE | cut -f1 -d,)
+  STATUS=$(echo $LINE | cut -f2 -d,)
+
+  if [ -e /config/values.yaml ]; then
+      VALUES="--values /config/values.yaml"
+  fi
+
+  if [ "$1" = "delete" ]; then
+      if [ -z "$INSTALLED_VERSION" ]; then
+          exit
+      fi
+      if [ "$HELM" == "helm_v3" ]; then
+        $HELM uninstall $NAME || true
+      else
+        $HELM delete $NAME || true
+        $HELM "$@" --purge $NAME
+      fi
+      exit
+  fi
+
+  if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
+      $HELM "$@" $NAME $CHART $VALUES
+      exit
+  fi
+  if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" = "$VERSION" ]; then
+      if [ "$STATUS" = "deployed" ]; then
+          echo Already installed $NAME, upgrading
+          $HELM upgrade $NAME $CHART $VALUES
+          exit
+      fi
+  fi
+
+  if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
+    if [ "$HELM" == "helm_v3"]; then
+        $HELM uninstall $NAME
+    else
+        $HELM "$@" --purge $NAME
+    fi
+    echo Deleted
+    $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
+    exit
+  fi
+
+  $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
+}
+
+helm_repo_init() {
+  # if the chart is url skip repo update
+  if grep -q -e "https\?://" <<< "$CHART"; then
+    echo "chart path is a url, skipping repo update"
+    return
+  fi
+
+  if [ "$HELM" == "helm_v3" ]; then
+    if [[ $CHART == stable/* ]]; then
+      $HELM repo add stable https://kubernetes-charts.storage.googleapis.com/
+      $HELM repo update
+    fi
+  else
+    $HELM repo update --strict || $HELM repo remove stable
+  fi
+
+  if [ -n "$REPO" ]; then
+    $HELM repo add ${NAME%%/*} $REPO
+    $HELM repo update
+  fi
+}
+
+HELM="helm_v3"
+NAME_ARG=""
+JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
+
 set -e -v
 eval set -- $(sed -e "s/%{KUBERNETES_API}%/${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}/g" <<< "${@@Q}")
 set +v -x
@@ -10,53 +88,15 @@ update-ca-certificates
 tiller --listen=127.0.0.1:44134 --storage=secret &
 export HELM_HOST=127.0.0.1:44134
 
-helm init --skip-refresh --client-only
-helm repo update --strict || helm repo remove stable
-if [ -n "$REPO" ]; then
-    helm repo add ${NAME%%/*} $REPO
-fi
-helm repo update
-
-
-JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
-LINE="$(helm ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD")"
-INSTALLED_VERSION=$(echo $LINE | cut -f1 -d,)
-STATUS=$(echo $LINE | cut -f2 -d,)
-
-if [ -e /config/values.yaml ]; then
-    VALUES="--values /config/values.yaml"
+helm_v2 init --skip-refresh --client-only
+EXIST=$(helm_v2 ls --all "^$NAME\$" --output json | jq -r '.Releases | length')
+if [ "$EXIST" == "1" ]; then
+  HELM="helm_v2"
+  NAME_ARG="--name"
+  JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
+  LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD")"
 fi
 
-if [ "$1" = "delete" ]; then
-    if [ -z "$INSTALLED_VERSION" ]; then
-        exit
-    fi
-    helm delete $NAME || true
-    helm "$@"
-    exit
-fi
+helm_repo_init
+helm_update $@
 
-if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
-    helm "$@" $VALUES
-    exit
-fi
-if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" = "$VERSION" ]; then
-    if [ "$STATUS" = "DEPLOYED" ]; then
-        echo Already installed $NAME, upgrading
-        # We assume the args are always install --name foo CHART
-        shift 2
-        helm upgrade "$@" $VALUES
-        exit
-    fi
-fi
-
-if [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "DELETED" ]; then
-    helm delete --purge $NAME
-    echo Deleted
-    helm "$@" $VALUES
-    exit
-fi
-
-# We assume the args are always install --name foo CHART
-shift 2
-helm upgrade "$@" $VALUES
