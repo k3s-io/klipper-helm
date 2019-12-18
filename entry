@@ -27,7 +27,7 @@ helm_update() {
   fi
 
   if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
-      $HELM "$@" $NAME $CHART $VALUES
+      $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
       exit
   fi
   if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" = "$VERSION" ]; then
@@ -90,11 +90,10 @@ export HELM_HOST=127.0.0.1:44134
 
 helm_v2 init --skip-refresh --client-only
 EXIST=$(helm_v2 ls --all "^$NAME\$" --output json | jq -r '.Releases | length')
-if [ "$EXIST" == "1" ]; then
+if [ "$EXIST" == "1" ] || [ "$HELM_VERSION" == "v2" ]; then
   HELM="helm_v2"
   NAME_ARG="--name"
   JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
-  LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD")"
 fi
 
 helm_repo_init
