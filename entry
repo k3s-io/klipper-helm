@@ -79,7 +79,7 @@ NAME_ARG=""
 JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
 
 set -e -v
-eval set -- $(sed -e "s/%{KUBERNETES_API}%/${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}/g" <<< "${@@Q}")
+CHART=$(sed -e "s/%{KUBERNETES_API}%/${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}/g" <<< "${CHART}")
 set +v -x
 
 cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-certificates/
