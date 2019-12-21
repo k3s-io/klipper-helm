@@ -33,7 +33,8 @@ helm_update() {
   if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" = "$VERSION" ]; then
       if [ "$STATUS" = "deployed" ]; then
           echo Already installed $NAME, upgrading
-          $HELM upgrade $NAME $CHART $VALUES
+          shift 1
+          $HELM $@ upgrade $NAME $CHART $VALUES
           exit
       fi
   fi
@@ -56,6 +57,7 @@ helm_repo_init() {
   # if the chart is url skip repo update
   if grep -q -e "https\?://" <<< "$CHART"; then
     echo "chart path is a url, skipping repo update"
+    $HELM repo remove stable || true
     return
   fi
 
