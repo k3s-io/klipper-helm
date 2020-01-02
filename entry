@@ -40,7 +40,7 @@ helm_update() {
   fi
 
   if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
-    if [ "$HELM" == "helm_v3"]; then
+    if [ "$HELM" == "helm_v3" ]; then
         $HELM uninstall $NAME
     else
         $HELM "$@" --purge $NAME
