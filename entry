@@ -30,7 +30,7 @@ helm_update() {
       $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
       exit
   fi
-  if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" = "$VERSION" ]; then
+  if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" != "$VERSION" ]; then
       if [ "$STATUS" = "deployed" ]; then
           echo Already installed $NAME, upgrading
           shift 1
