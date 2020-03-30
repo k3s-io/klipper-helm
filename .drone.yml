@@ -129,6 +129,49 @@ volumes:
 
 ---
 kind: pipeline
+name: ppc64le
+
+platform:
+  os: linux
+  arch: ppc64le
+
+steps:
+- name: build
+  image: rancher/dapper:v0.4.1
+  commands:
+  - dapper ci
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: docker-publish
+  image: plugins/docker
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/klipper-helm"
+    tag: "${DRONE_TAG}-ppc64le"
+    username:
+      from_secret: docker_username
+    build_args:
+    - ARCH=ppc64le
+  when:
+    instance:
+    - drone-publish.rancher.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
 name: manifest
 
 platform:
@@ -147,6 +190,7 @@ steps:
       - linux/amd64
       - linux/arm64
       - linux/arm
+      - linux/ppc64le
     target: "rancher/klipper-helm:${DRONE_TAG}"
     template: "rancher/klipper-helm:${DRONE_TAG}-ARCH"
   when:
