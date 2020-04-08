@@ -2,7 +2,7 @@
 
 helm_update() {
   if [ "$HELM" == "helm_v3" ]; then
-    LINE="$($HELM ls --all -f "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
+    LINE="$($HELM ls --all-namespaces --all -f "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
   else
     LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
   fi
@@ -30,13 +30,13 @@ helm_update() {
       $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
       exit
   fi
-  if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" = "$VERSION" ]; then
-      if [ "$STATUS" = "deployed" ]; then
-          echo Already installed $NAME, upgrading
-          shift 1
-          $HELM $@ upgrade $NAME $CHART $VALUES
-          exit
-      fi
+
+  # Upgrade only if the status is already deployed 
+  if [ "$STATUS" = "deployed" ]; then
+      echo Already installed $NAME, upgrading
+      shift 1
+      $HELM upgrade $NAME $CHART $VALUES
+      exit
   fi
 
   if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
