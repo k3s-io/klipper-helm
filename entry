@@ -35,7 +35,7 @@ helm_update() {
   if [ "$STATUS" = "deployed" ]; then
       echo Already installed $NAME, upgrading
       shift 1
-      $HELM upgrade $NAME $CHART $VALUES
+      $HELM upgrade "$@" $NAME $CHART $VALUES
       exit
   fi
 
