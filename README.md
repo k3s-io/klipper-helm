@@ -9,6 +9,11 @@ simple. This is just a single shell script.
 
 `make`
 
+## Contact
+
+For bugs, questions, comments, corrections, suggestions, etc., open an issue in
+[rancher/helm-controller](//github.com/rancher/helm-controller/issues).
+
 ## License
 Copyright (c) 2019 [Rancher Labs, Inc.](http://rancher.com)
 
