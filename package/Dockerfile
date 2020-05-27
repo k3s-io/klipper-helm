@@ -3,7 +3,7 @@ RUN apk add -U curl ca-certificates
 ARG ARCH
 RUN curl https://storage.googleapis.com/kubernetes-helm/helm-v2.16.7-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 RUN mv /usr/bin/helm /usr/bin/helm_v2
-RUN curl https://get.helm.sh/helm-v3.0.0-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
+RUN curl https://get.helm.sh/helm-v3.2.1-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 RUN mv /usr/bin/helm /usr/bin/helm_v3
 
 FROM alpine:3.8
