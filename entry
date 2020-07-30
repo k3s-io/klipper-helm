@@ -111,6 +111,8 @@ if [ "$EXIST" == "1" ] || [ "$HELM_VERSION" == "v2" ]; then
 fi
 
 helm_content_decode
-helm_repo_init
+if [ "$1" != "delete" ]; then
+  helm_repo_init
+fi
 helm_update $@
 
