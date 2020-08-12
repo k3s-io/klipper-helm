@@ -1,91 +1,92 @@
 #!/bin/bash
 
 helm_update() {
-  if [ "$HELM" == "helm_v3" ]; then
-    LINE="$($HELM ls --all-namespaces --all -f "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
-  else
-    LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
-  fi
-  INSTALLED_VERSION=$(echo $LINE | cut -f1 -d,)
-  STATUS=$(echo $LINE | cut -f2 -d,)
+	if [ "$HELM" == "helm_v3" ]; then
+		LINE="$($HELM ls --all-namespaces --all -f "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
+	else
+		LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
+	fi
+	INSTALLED_VERSION=$(echo $LINE | cut -f1 -d,)
+	STATUS=$(echo $LINE | cut -f2 -d,)
+	VALUES=""
 
-  if [ -e /config/values.yaml ]; then
-      VALUES="--values /config/values.yaml"
-  fi
+	for VALUES_FILE in /config/*.yaml; do
+		VALUES="$VALUES --values $VALUES_FILE"
+	done
 
-  if [ "$1" = "delete" ]; then
-      if [ -z "$INSTALLED_VERSION" ]; then
-          exit
-      fi
-      if [ "$HELM" == "helm_v3" ]; then
-        $HELM uninstall $NAME || true
-      else
-        $HELM delete $NAME || true
-        $HELM "$@" --purge $NAME
-      fi
-      exit
-  fi
+	if [ "$1" = "delete" ]; then
+		if [ -z "$INSTALLED_VERSION" ]; then
+			exit
+		fi
+		if [ "$HELM" == "helm_v3" ]; then
+			$HELM uninstall $NAME || true
+		else
+			$HELM delete $NAME || true
+			$HELM "$@" --purge $NAME
+		fi
+		exit
+	fi
 
-  if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
-      $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
-      exit
-  fi
+	if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
+		$HELM "$@" $NAME_ARG $NAME $CHART $VALUES
+		exit
+	fi
 
-  # Upgrade only if the status is already deployed 
-  if [ "$STATUS" = "deployed" ]; then
-      echo Already installed $NAME, upgrading
-      shift 1
-      $HELM upgrade "$@" $NAME $CHART $VALUES
-      exit
-  fi
+	# Upgrade only if the status is already deployed
+	if [ "$STATUS" = "deployed" ]; then
+		echo Already installed $NAME, upgrading
+		shift 1
+		$HELM upgrade "$@" $NAME $CHART $VALUES
+		exit
+	fi
 
-  if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
-    if [ "$HELM" == "helm_v3" ]; then
-        $HELM uninstall $NAME
-    else
-        $HELM "$@" --purge $NAME
-    fi
-    echo Deleted
-    $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
-    exit
-  fi
+	if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
+		if [ "$HELM" == "helm_v3" ]; then
+			$HELM uninstall $NAME
+		else
+			$HELM "$@" --purge $NAME
+		fi
+		echo Deleted
+		$HELM "$@" $NAME_ARG $NAME $CHART $VALUES
+		exit
+	fi
 
-  $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
+	$HELM "$@" $NAME_ARG $NAME $CHART $VALUES
 }
 
 helm_repo_init() {
-  # if the chart is url skip repo update
-  if grep -q -e "https\?://" <<< "$CHART"; then
-    echo "chart path is a url, skipping repo update"
-    $HELM repo remove stable || true
-    return
-  fi
+	# if the chart is url skip repo update
+	if grep -q -e "https\?://" <<< "$CHART"; then
+		echo "chart path is a url, skipping repo update"
+		$HELM repo remove stable || true
+		return
+	fi
 
-  if [ "$HELM" == "helm_v3" ]; then
-    if [[ $CHART == stable/* ]]; then
-      $HELM repo add stable https://kubernetes-charts.storage.googleapis.com/
-      $HELM repo update
-    fi
-  else
-    $HELM repo update --strict || $HELM repo remove stable
-  fi
+	if [ "$HELM" == "helm_v3" ]; then
+		if [[ $CHART == stable/* ]]; then
+			$HELM repo add stable https://kubernetes-charts.storage.googleapis.com/
+			$HELM repo update
+		fi
+	else
+		$HELM repo update --strict || $HELM repo remove stable
+	fi
 
-  if [ -n "$REPO" ]; then
-    $HELM repo add ${NAME%%/*} $REPO
-    $HELM repo update
-  fi
+	if [ -n "$REPO" ]; then
+		$HELM repo add ${NAME%%/*} $REPO
+		$HELM repo update
+	fi
 }
 
 helm_content_decode() {
-  set -e
-  ENC_CHART_PATH="/chart/${NAME}.tgz.base64"
-  CHART_PATH="/${NAME}.tgz"
-  if [ ! -f "${ENC_CHART_PATH}" ]; then
-    return
-  fi
-  cat ${ENC_CHART_PATH} | base64 -d > ${CHART_PATH}
-  CHART=${CHART_PATH}
-  set +e
+	set -e
+	ENC_CHART_PATH="/chart/${NAME}.tgz.base64"
+	CHART_PATH="/${NAME}.tgz"
+	if [ ! -f "${ENC_CHART_PATH}" ]; then
+		return
+	fi
+	cat ${ENC_CHART_PATH} | base64 -d > ${CHART_PATH}
+	CHART=${CHART_PATH}
+	set +e
 }
 
 HELM="helm_v3"
@@ -105,10 +106,12 @@ export HELM_HOST=127.0.0.1:44134
 helm_v2 init --skip-refresh --client-only
 EXIST=$(helm_v2 ls --all "^$NAME\$" --output json | jq -r '.Releases | length')
 if [ "$EXIST" == "1" ] || [ "$HELM_VERSION" == "v2" ]; then
-  HELM="helm_v2"
-  NAME_ARG="--name"
-  JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
+	HELM="helm_v2"
+	NAME_ARG="--name"
+	JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
 fi
+
+shopt -s nullglob
 
 helm_content_decode
 helm_repo_init
