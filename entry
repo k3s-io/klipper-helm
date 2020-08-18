@@ -114,6 +114,8 @@ fi
 shopt -s nullglob
 
 helm_content_decode
-helm_repo_init
+if [ "$1" != "delete" ]; then
+  helm_repo_init
+fi
 helm_update $@
 
