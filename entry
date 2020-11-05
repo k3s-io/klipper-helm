@@ -100,11 +100,14 @@ set +v -x
 cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-certificates/
 update-ca-certificates
 
-tiller --listen=127.0.0.1:44134 --storage=secret &
-export HELM_HOST=127.0.0.1:44134
+if [ "$BOOTSTRAP" != "true" ]; then
+  tiller --listen=127.0.0.1:44134 --storage=secret &
+  export HELM_HOST=127.0.0.1:44134
 
-helm_v2 init --skip-refresh --client-only
-EXIST=$(helm_v2 ls --all "^$NAME\$" --output json | jq -r '.Releases | length')
+  helm_v2 init --skip-refresh --client-only
+  EXIST=$(helm_v2 ls --all "^$NAME\$" --output json | jq -r '.Releases | length')
+fi
+
 if [ "$EXIST" == "1" ] || [ "$HELM_VERSION" == "v2" ]; then
 	HELM="helm_v2"
 	NAME_ARG="--name"
