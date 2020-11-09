@@ -109,7 +109,7 @@ if [ "$BOOTSTRAP" != "true" ]; then
 fi
 
 if [ "$EXIST" == "1" ] || [ "$HELM_VERSION" == "v2" ]; then
-  if [ "$BOOTSTRSP" == "true" ]; then
+  if [ "$BOOTSTRAP" == "true" ]; then
     echo "Error: bootstrap flag can't be set with helm version 2 charts, please remove the bootstrap flag and update the chart"
     exit 1
   fi
