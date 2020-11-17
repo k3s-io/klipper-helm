@@ -1,6 +1,7 @@
 ---
 kind: pipeline
 name: amd64
+type: docker
 
 platform:
   os: linux
@@ -8,7 +9,7 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.1
+  image: rancher/dapper:v0.5.0
   commands:
   - dapper ci
   volumes:
@@ -29,7 +30,7 @@ steps:
     - ARCH=amd64
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -44,6 +45,7 @@ volumes:
 ---
 kind: pipeline
 name: arm64
+type: docker
 
 platform:
   os: linux
@@ -51,7 +53,7 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.1
+  image: rancher/dapper:v0.5.0
   commands:
   - dapper ci
   volumes:
@@ -72,7 +74,7 @@ steps:
     - ARCH=arm64
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -87,6 +89,7 @@ volumes:
 ---
 kind: pipeline
 name: arm
+type: docker
 
 platform:
   os: linux
@@ -94,7 +97,7 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.4.1
+  image: rancher/dapper:v0.5.0
   commands:
   - dapper ci
   volumes:
@@ -115,7 +118,7 @@ steps:
     - ARCH=arm
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -137,7 +140,7 @@ platform:
 
 steps:
 - name: manifest
-  image: plugins/manifest:1.0.2
+  image: plugins/manifest
   settings:
     username:
       from_secret: docker_username
@@ -151,7 +154,7 @@ steps:
     template: "rancher/klipper-helm:${DRONE_TAG}-ARCH"
   when:
     instance:
-    - drone-publish.rancher.io
+    - drone-publish.k3s.io
     ref:
     - refs/head/master
     - refs/tags/*
@@ -162,3 +165,5 @@ depends_on:
 - amd64
 - arm64
 - arm
+
+...
