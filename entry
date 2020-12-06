@@ -1,55 +1,57 @@
 #!/bin/bash
 
 helm_update() {
-  if [ "$HELM" == "helm_v3" ]; then
-    LINE="$($HELM ls -f "^$NAME\$" --namespace $TARGET_NAMESPACE --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
-  else
-    LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
-  fi
-  INSTALLED_VERSION=$(echo $LINE | cut -f1 -d,)
-  STATUS=$(echo $LINE | cut -f2 -d,)
+	if [ "$HELM" == "helm_v3" ]; then
+		LINE="$($HELM ls -f "^$NAME\$" --namespace $TARGET_NAMESPACE --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
+	else
+		LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
+	fi
+	INSTALLED_VERSION=$(echo $LINE | cut -f1 -d,)
+	STATUS=$(echo $LINE | cut -f2 -d,)
+	VALUES=""
 
-  if [ -e /config/values.yaml ]; then
-      VALUES="--values /config/values.yaml"
-  fi
+	for VALUES_FILE in /config/*.yaml; do
+		VALUES="$VALUES --values $VALUES_FILE"
+	done
 
-  if [ "$1" = "delete" ]; then
-      if [ -z "$INSTALLED_VERSION" ]; then
-          exit
-      fi
-      if [ "$HELM" == "helm_v3" ]; then
-        $HELM uninstall $NAME --namespace $TARGET_NAMESPACE|| true
-      else
-        $HELM delete --purge $NAME|| true
-      fi
-      exit
-  fi
+	if [ "$1" = "delete" ]; then
+		if [ -z "$INSTALLED_VERSION" ]; then
+			exit
+		fi
+		if [ "$HELM" == "helm_v3" ]; then
+			$HELM uninstall $NAME --namespace $TARGET_NAMESPACE|| true
+		else
+			$HELM delete $NAME || true
+			$HELM "$@" --purge $NAME
+		fi
+		exit
+	fi
 
-  if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
-      $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
-      exit
-  fi
-  if [ -z "$VERSION" ] || [ "$INSTALLED_VERSION" = "$VERSION" ]; then
-      if [ "$STATUS" = "deployed" ]; then
-          echo Already installed $NAME, upgrading
-          shift 1
-          $HELM $@ upgrade $NAME $CHART $VALUES
-          exit
-      fi
-  fi
+	if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
+		$HELM "$@" $NAME_ARG $NAME $CHART $VALUES
+		exit
+	fi
 
-  if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
-    if [ "$HELM" == "helm_v3" ]; then
-        $HELM uninstall $NAME --namespace $TARGET_NAMESPACE
-    else
-        $HELM delete --purge $NAME
-    fi
-    echo Deleted
-    $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
-    exit
-  fi
+	# Upgrade only if the status is already deployed
+	if [ "$STATUS" = "deployed" ]; then
+		echo Already installed $NAME, upgrading
+		shift 1
+		$HELM upgrade "$@" $NAME $CHART $VALUES
+		exit
+	fi
 
-  $HELM "$@" $NAME_ARG $NAME $CHART $VALUES
+	if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
+		if [ "$HELM" == "helm_v3" ]; then
+			$HELM uninstall $NAME --namespace $TARGET_NAMESPACE
+		else
+			$HELM "$@" --purge $NAME
+		fi
+		echo Deleted
+		$HELM "$@" $NAME_ARG $NAME $CHART $VALUES
+		exit
+	fi
+
+	$HELM "$@" $NAME_ARG $NAME $CHART $VALUES
 }
 
 helm_repo_init() {
