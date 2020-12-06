@@ -2,7 +2,7 @@
 
 helm_update() {
 	if [ "$HELM" == "helm_v3" ]; then
-		LINE="$($HELM ls --all-namespaces --all -f "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
+		LINE="$($HELM ls -f "^$NAME\$" --namespace $TARGET_NAMESPACE --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
 	else
 		LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
 	fi
@@ -19,7 +19,7 @@ helm_update() {
 			exit
 		fi
 		if [ "$HELM" == "helm_v3" ]; then
-			$HELM uninstall $NAME || true
+			$HELM uninstall $NAME --namespace $TARGET_NAMESPACE|| true
 		else
 			$HELM delete $NAME || true
 			$HELM "$@" --purge $NAME
@@ -42,7 +42,7 @@ helm_update() {
 
 	if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
 		if [ "$HELM" == "helm_v3" ]; then
-			$HELM uninstall $NAME
+			$HELM uninstall $NAME --namespace $TARGET_NAMESPACE
 		else
 			$HELM "$@" --purge $NAME
 		fi
