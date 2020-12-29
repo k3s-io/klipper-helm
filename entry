@@ -64,7 +64,7 @@ helm_repo_init() {
 
 	if [ "$HELM" == "helm_v3" ]; then
 		if [[ $CHART == stable/* ]]; then
-			$HELM repo add stable https://kubernetes-charts.storage.googleapis.com/
+			$HELM repo add stable https://charts.helm.sh/stable
 			$HELM repo update
 		fi
 	else
