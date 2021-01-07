@@ -64,7 +64,7 @@ helm_repo_init() {
 
 	if [ "$HELM" == "helm_v3" ]; then
 		if [[ $CHART == stable/* ]]; then
-			$HELM repo add stable https://charts.helm.sh/stable/
+			$HELM repo add stable $STABLE_REPO_URL
 			$HELM repo update
 		fi
 	else
@@ -104,7 +104,7 @@ if [ "$BOOTSTRAP" != "true" ]; then
   tiller --listen=127.0.0.1:44134 --storage=secret &
   export HELM_HOST=127.0.0.1:44134
 
-  helm_v2 init --skip-refresh --client-only
+  helm_v2 init --skip-refresh --client-only --stable-repo-url $STABLE_REPO_URL
   EXIST=$(helm_v2 ls --all "^$NAME\$" --output json | jq -r '.Releases | length')
 fi
 
