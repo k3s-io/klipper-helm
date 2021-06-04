@@ -1,7 +1,7 @@
 #!/bin/bash
 
 helm_update() {
-	if [ "$HELM" == "helm_v3" ]; then
+	if [[ "$HELM" == "helm_v3" ]]; then
 		LINE="$($HELM ls -f "^$NAME\$" --namespace $TARGET_NAMESPACE --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
 	else
 		LINE="$($HELM ls --all "^$NAME\$" --output json | jq -r "$JQ_CMD" | tr '[:upper:]' '[:lower:]')"
@@ -14,12 +14,12 @@ helm_update() {
 		VALUES="$VALUES --values $VALUES_FILE"
 	done
 
-	if [ "$1" = "delete" ]; then
-		if [ -z "$INSTALLED_VERSION" ]; then
+	if [[ "$1" = "delete" ]]; then
+		if [[ -z "$INSTALLED_VERSION" ]]; then
 			exit
 		fi
-		if [ "$HELM" == "helm_v3" ]; then
-			$HELM uninstall $NAME --namespace $TARGET_NAMESPACE|| true
+		if [[ "$HELM" == "helm_v3" ]]; then
+			$HELM uninstall $NAME --namespace $TARGET_NAMESPACE || true
 		else
 			$HELM delete $NAME || true
 			$HELM "$@" --purge $NAME
@@ -27,21 +27,21 @@ helm_update() {
 		exit
 	fi
 
-	if [ -z "$INSTALLED_VERSION" ] && [ -z "$STATUS" ]; then
+	if [[ -z "$INSTALLED_VERSION" ]] && [[ -z "$STATUS" ]]; then
 		$HELM "$@" $NAME_ARG $NAME $CHART $VALUES
 		exit
 	fi
 
 	# Upgrade only if the status is already deployed
-	if [ "$STATUS" = "deployed" ]; then
+	if [[ "$STATUS" = "deployed" ]]; then
 		echo Already installed $NAME, upgrading
 		shift 1
 		$HELM upgrade "$@" $NAME $CHART $VALUES
 		exit
 	fi
 
-	if [ "$STATUS" = "failed" ] || [ "$STATUS" = "deleted" ]; then
-		if [ "$HELM" == "helm_v3" ]; then
+	if [[ "$STATUS" = "failed" ]] || [[ "$STATUS" = "deleted" ]]; then
+		if [[ "$HELM" == "helm_v3" ]]; then
 			$HELM uninstall $NAME --namespace $TARGET_NAMESPACE
 		else
 			$HELM "$@" --purge $NAME
@@ -62,7 +62,7 @@ helm_repo_init() {
 		return
 	fi
 
-	if [ "$HELM" == "helm_v3" ]; then
+	if [[ "$HELM" == "helm_v3" ]]; then
 		if [[ $CHART == stable/* ]]; then
 			$HELM repo add stable $STABLE_REPO_URL
 			$HELM repo update
@@ -71,7 +71,7 @@ helm_repo_init() {
 		$HELM repo update --strict || $HELM repo remove stable
 	fi
 
-	if [ -n "$REPO" ]; then
+	if [[ -n "$REPO" ]]; then
 		$HELM repo add ${NAME%%/*} $REPO
 		$HELM repo update
 	fi
@@ -81,7 +81,7 @@ helm_content_decode() {
 	set -e
 	ENC_CHART_PATH="/chart/${NAME}.tgz.base64"
 	CHART_PATH="/${NAME}.tgz"
-	if [ ! -f "${ENC_CHART_PATH}" ]; then
+	if [[ ! -f "${ENC_CHART_PATH}" ]]; then
 		return
 	fi
 	cat ${ENC_CHART_PATH} | base64 -d > ${CHART_PATH}
@@ -100,7 +100,7 @@ set +v -x
 cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-certificates/
 update-ca-certificates
 
-if [ "$BOOTSTRAP" != "true" ]; then
+if [[ "$BOOTSTRAP" != "true" ]]; then
   tiller --listen=127.0.0.1:44134 --storage=secret &
   export HELM_HOST=127.0.0.1:44134
 
@@ -108,8 +108,8 @@ if [ "$BOOTSTRAP" != "true" ]; then
   EXIST=$(helm_v2 ls --all "^$NAME\$" --output json | jq -r '.Releases | length')
 fi
 
-if [ "$EXIST" == "1" ] || [ "$HELM_VERSION" == "v2" ]; then
-  if [ "$BOOTSTRAP" == "true" ]; then
+if [[ "$EXIST" == "1" ]] || [[ "$HELM_VERSION" == "v2" ]]; then
+  if [[ "$BOOTSTRAP" == "true" ]]; then
     echo "Error: bootstrap flag can't be set with helm version 2 charts, please remove the bootstrap flag and update the chart"
     exit 1
   fi
@@ -121,7 +121,7 @@ fi
 shopt -s nullglob
 
 helm_content_decode
-if [ "$1" != "delete" ]; then
+if [[ "$1" != "delete" ]]; then
   helm_repo_init
 fi
 helm_update "$@"
