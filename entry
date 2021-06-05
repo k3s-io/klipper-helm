@@ -6,8 +6,7 @@ helm_update() {
 	else
 		LINE="$(${HELM} ls --all "^${NAME}\$" --output json | jq -r "${JQ_CMD}" | tr '[:upper:]' '[:lower:]')"
 	fi
-	INSTALLED_VERSION=$(echo ${LINE} | cut -f1 -d,)
-	STATUS=$(echo ${LINE} | cut -f2 -d,)
+	IFS=, read -r INSTALLED_VERSION STATUS _ <<<${LINE}
 	VALUES=""
 
 	for VALUES_FILE in /config/*.yaml; do
@@ -84,7 +83,7 @@ helm_content_decode() {
 	if [[ ! -f "${ENC_CHART_PATH}" ]]; then
 		return
 	fi
-	cat ${ENC_CHART_PATH} | base64 -d > ${CHART_PATH}
+	base64 -d ${ENC_CHART_PATH} > ${CHART_PATH}
 	CHART=${CHART_PATH}
 	set +e
 }
@@ -94,7 +93,7 @@ NAME_ARG=""
 JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
 
 set -e -v
-CHART=$(sed -e "s/%{KUBERNETES_API}%/${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}/g" <<< "${CHART}")
+CHART="${CHART//%\{KUBERNETES_API\}%/${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}}"
 set +v -x
 
 cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-certificates/
