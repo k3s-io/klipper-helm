@@ -2,7 +2,7 @@
 
 helm_update() {
 	if [[ "${HELM}" == "helm_v3" ]]; then
-		LINE="$(${HELM} ls -f "^${NAME}\$" --namespace ${TARGET_NAMESPACE} --output json | jq -r "${JQ_CMD}" | tr '[:upper:]' '[:lower:]')"
+		LINE="$(${HELM} ls --all -f "^${NAME}\$" --namespace ${TARGET_NAMESPACE} --output json | jq -r "${JQ_CMD}" | tr '[:upper:]' '[:lower:]')"
 	else
 		LINE="$(${HELM} ls --all "^${NAME}\$" --output json | jq -r "${JQ_CMD}" | tr '[:upper:]' '[:lower:]')"
 	fi
@@ -13,6 +13,7 @@ helm_update() {
 		VALUES="${VALUES} --values ${VALUES_FILE}"
 	done
 
+	# Uninstall or delete chart if asked to delete and the chart was found; otherwise no-op
 	if [[ "$1" = "delete" ]]; then
 		if [[ -z "${INSTALLED_VERSION}" ]]; then
 			exit
@@ -26,30 +27,34 @@ helm_update() {
 		exit
 	fi
 
-	if [[ -z "${INSTALLED_VERSION}" ]] && [[ -z "${STATUS}" ]]; then
+	# No current version and status, safe to install
+	 if [[ "${INSTALLED_VERSION}" =~ ^(|null)$ ]] && [[ "${STATUS}" =~ ^(|null)$ ]]; then
 		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${VALUES}
 		exit
 	fi
 
-	# Upgrade only if the status is already deployed
-	if [[ "${STATUS}" = "deployed" ]]; then
+	# Upgrade only if the status is already deployed, or if a previous upgrade was interrupted
+	if [[ "${STATUS}" =~ ^(deployed|pending-upgrade)$ ]]; then
 		echo Already installed ${NAME}, upgrading
 		shift 1
 		${HELM} upgrade "$@" ${NAME} ${CHART} ${VALUES}
 		exit
 	fi
 
-	if [[ "${STATUS}" = "failed" ]] || [[ "${STATUS}" = "deleted" ]]; then
+	# The chart is in a bad state; try uninstalling it first
+	if [[ "${STATUS}" =~ ^(deleted|failed|null|unknown)$ ]]; then
 		if [[ "${HELM}" == "helm_v3" ]]; then
 			${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE}
 		else
 			${HELM} "$@" --purge ${NAME}
 		fi
 		echo Deleted
+		# Try installing now that we've uninstalled
 		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${VALUES}
 		exit
 	fi
 
+	# No special status handling necessary, do whatever we were asked to do
 	${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${VALUES}
 }
 
