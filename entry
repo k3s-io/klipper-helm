@@ -28,8 +28,8 @@ helm_update() {
 	fi
 
 	# No current version and status, safe to install
-	 if [[ "${INSTALLED_VERSION}" =~ ^(|null)$ ]] && [[ "${STATUS}" =~ ^(|null)$ ]]; then
-		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${VALUES}
+	if [[ "${INSTALLED_VERSION}" =~ ^(|null)$ ]] && [[ "${STATUS}" =~ ^(|null)$ ]]; then
+		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
 		exit
 	fi
 
@@ -37,7 +37,7 @@ helm_update() {
 	if [[ "${STATUS}" =~ ^(deployed|pending-upgrade)$ ]]; then
 		echo Already installed ${NAME}, upgrading
 		shift 1
-		${HELM} upgrade "$@" ${NAME} ${CHART} ${VALUES}
+		${HELM} upgrade "$@" ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
 		exit
 	fi
 
@@ -50,12 +50,12 @@ helm_update() {
 		fi
 		echo Deleted
 		# Try installing now that we've uninstalled
-		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${VALUES}
+		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
 		exit
 	fi
 
 	# No special status handling necessary, do whatever we were asked to do
-	${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${VALUES}
+	${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
 }
 
 helm_repo_init() {
@@ -95,6 +95,7 @@ helm_content_decode() {
 
 HELM="helm_v3"
 NAME_ARG=""
+TIMEOUT_ARG=""
 JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
 
 set -e -v
@@ -105,28 +106,36 @@ cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-cert
 update-ca-certificates
 
 if [[ "${BOOTSTRAP}" != "true" ]]; then
-  tiller --listen=127.0.0.1:44134 --storage=secret &
-  export HELM_HOST=127.0.0.1:44134
+	tiller --listen=127.0.0.1:44134 --storage=secret &
+	export HELM_HOST=127.0.0.1:44134
 
-  helm_v2 init --skip-refresh --client-only --stable-repo-url ${STABLE_REPO_URL}
-  EXIST=$(helm_v2 ls --all "^${NAME}\$" --output json | jq -r '.Releases | length')
+	helm_v2 init --skip-refresh --client-only --stable-repo-url ${STABLE_REPO_URL}
+	V2_CHART_EXISTS=$(helm_v2 ls --all "^${NAME}\$" --output json | jq -r '.Releases | length')
 fi
 
-if [[ "${EXIST}" == "1" ]] || [[ "${HELM_VERSION}" == "v2" ]]; then
-  if [[ "${BOOTSTRAP}" == "true" ]]; then
-    echo "Error: bootstrap flag can't be set with helm version 2 charts, please remove the bootstrap flag and update the chart"
-    exit 1
-  fi
+if [[ "${V2_CHART_EXISTS}" == "1" ]] || [[ "${HELM_VERSION}" == "v2" ]]; then
+	if [[ "${BOOTSTRAP}" == "true" ]]; then
+		echo "Error: bootstrap flag can't be set with helm version 2 charts, please remove the bootstrap flag and update the chart"
+		exit 1
+	fi
 	HELM="helm_v2"
 	NAME_ARG="--name"
 	JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
+fi
+
+if [[ -n "${TIMEOUT}" ]]; then
+	if [[ "${HELM}" == "helm_v3" ]]; then
+		TIMEOUT_ARG="--timeout ${TIMEOUT}"
+	else
+		echo "Warning: timeout flag can't be set with version 2 charts, using default timeout"
+	fi
 fi
 
 shopt -s nullglob
 
 helm_content_decode
 if [[ "$1" != "delete" ]]; then
-  helm_repo_init
+	helm_repo_init
 fi
 helm_update "$@"
 
