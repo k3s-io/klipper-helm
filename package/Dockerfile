@@ -7,7 +7,7 @@ RUN curl https://get.helm.sh/helm-v3.5.4-linux-${ARCH}.tar.gz | tar xvzf - --str
 RUN mv /usr/bin/helm /usr/bin/helm_v3
 
 FROM golang:1.16-alpine3.12 as plugins
-RUN apk add -U curl ca-certificates build-base
+RUN apk add -U curl ca-certificates build-base binutils-gold
 ARG ARCH
 COPY --from=extract /usr/bin/helm_v3 /usr/bin/helm
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
