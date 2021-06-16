@@ -33,8 +33,25 @@ helm_update() {
 		exit
 	fi
 
-	# Upgrade only if the status is already deployed, or if a previous upgrade was interrupted
-	if [[ "${STATUS}" =~ ^(deployed|pending-upgrade)$ ]]; then
+	# If a previous helm_v3 operation was interrupted unexpectedly, set it to failed.
+	if [[ "${STATUS}" =~ ^(pending-install|pending-upgrade|pending-rollback)$ ]] && [[ "${HELM}" == "helm_v3" ]]; then
+		echo Previous helm job was interrupted, updating status from ${STATUS} to failed
+		${HELM} set-status ${NAME} failed --namespace ${TARGET_NAMESPACE}
+
+		# Upgrades can be retried; install and rollback will be handled as failure below.
+		# If this upgrade also fails, retries of the job will handle that as failure due to the release state change.
+		if [[ "${STATUS}" == "pending-upgrade" ]]; then
+			echo "Retrying upgrade of ${NAME}"
+			shift 1
+			${HELM} upgrade "$@" ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
+			exit
+		else
+			STATUS=failed
+		fi
+	fi
+
+	# Upgrade only if the chart is already deployed
+	if [[ "${STATUS}" == "deployed" ]]; then
 		echo Already installed ${NAME}, upgrading
 		shift 1
 		${HELM} upgrade "$@" ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
