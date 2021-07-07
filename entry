@@ -111,7 +111,7 @@ helm_content_decode() {
 }
 
 export HELM_TLS_CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-HELM="helm_v3 --ca-file=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+HELM="helm_v3"
 NAME_ARG=""
 TIMEOUT_ARG=""
 JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
