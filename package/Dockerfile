@@ -22,7 +22,6 @@ COPY --from=extract /usr/bin/helm_v2 /usr/bin/helm_v3 /usr/bin/tiller /usr/bin/
 COPY --from=plugins /root/.local/share/helm/plugins/ /root/.local/share/helm/plugins/
 COPY entry /usr/bin/
 ENTRYPOINT ["entry"]
-ENV HOME=/home/klipper-helm
 ENV STABLE_REPO_URL=https://charts.helm.sh/stable/
 ENV TIMEOUT=
 USER 1000
