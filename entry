@@ -101,7 +101,7 @@ helm_repo_init() {
 helm_content_decode() {
 	set -e
 	ENC_CHART_PATH="/chart/${NAME}.tgz.base64"
-	CHART_PATH="/${NAME}.tgz"
+	CHART_PATH="/tmp/${NAME}.tgz"
 	if [[ ! -f "${ENC_CHART_PATH}" ]]; then
 		return
 	fi
@@ -110,7 +110,8 @@ helm_content_decode() {
 	set +e
 }
 
-HELM="helm_v3"
+export HELM_TLS_CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+HELM="helm_v3 --ca-file=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 NAME_ARG=""
 TIMEOUT_ARG=""
 JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
@@ -118,9 +119,6 @@ JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
 set -e -v
 CHART="${CHART//%\{KUBERNETES_API\}%/${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}}"
 set +v -x
-
-cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-certificates/
-update-ca-certificates
 
 if [[ "${BOOTSTRAP}" != "true" ]]; then
 	tiller --listen=127.0.0.1:44134 --storage=secret &
