@@ -19,7 +19,7 @@ RUN apk add -U --no-cache ca-certificates jq bash git && \
     adduser -D -u 1000 -s /bin/bash klipper-helm
 WORKDIR /home/klipper-helm
 COPY --from=extract /usr/bin/helm_v2 /usr/bin/helm_v3 /usr/bin/tiller /usr/bin/
-COPY --from=plugins /root/.local/share/helm/plugins/ /root/.local/share/helm/plugins/
+COPY --from=plugins /root/.local/share/helm/plugins/ /home/klipper-helm/.local/share/helm/plugins/
 COPY entry /usr/bin/
 ENTRYPOINT ["entry"]
 ENV STABLE_REPO_URL=https://charts.helm.sh/stable/
