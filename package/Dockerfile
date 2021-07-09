@@ -15,10 +15,13 @@ RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     make -C /go/src/github.com/k3s-io/helm-set-status install
 
 FROM alpine:3.12
-RUN apk add -U --no-cache ca-certificates jq bash git
+RUN apk add -U --no-cache ca-certificates jq bash git && \
+    adduser -D -u 1000 -s /bin/bash klipper-helm
+WORKDIR /home/klipper-helm
 COPY --from=extract /usr/bin/helm_v2 /usr/bin/helm_v3 /usr/bin/tiller /usr/bin/
-COPY --from=plugins /root/.local/share/helm/plugins/ /root/.local/share/helm/plugins/
+COPY --chown=1000:1000 --from=plugins /root/.local/share/helm/plugins/ /home/klipper-helm/.local/share/helm/plugins/
 COPY entry /usr/bin/
 ENTRYPOINT ["entry"]
 ENV STABLE_REPO_URL=https://charts.helm.sh/stable/
 ENV TIMEOUT=
+USER 1000
