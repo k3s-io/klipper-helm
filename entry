@@ -110,7 +110,9 @@ helm_content_decode() {
 	set +e
 }
 
-export HELM_TLS_CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+export SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+export SSL_CERT_DIR=/etc/ssl/certs
+export HELM_TLS_CA_CERT=${SSL_CERT_FILE}
 HELM="helm_v3"
 NAME_ARG=""
 TIMEOUT_ARG=""
