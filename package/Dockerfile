@@ -13,6 +13,14 @@ COPY --from=extract /usr/bin/helm_v3 /usr/bin/helm
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     curl -L https://github.com/k3s-io/helm-set-status/archive/refs/tags/v0.1.2.tar.gz | tar xvzf - --strip-components=1 -C /go/src/github.com/k3s-io/helm-set-status && \
     make -C /go/src/github.com/k3s-io/helm-set-status install
+RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
+    curl -L https://github.com/helm/helm-mapkubeapis/archive/refs/tags/v0.1.0.tar.gz | tar xvzf - --strip-components=1 -C /go/src/github.com/helm/helm-mapkubeapis && \
+    make -C /go/src/github.com/helm/helm-mapkubeapis && \
+    mkdir -p /root/.local/share/helm/plugins/helm-mapkubeapis && \
+    cp -vr /go/src/github.com/helm/helm-mapkubeapis/plugin.yaml \
+           /go/src/github.com/helm/helm-mapkubeapis/bin \
+           /go/src/github.com/helm/helm-mapkubeapis/config \
+           /root/.local/share/helm/plugins/helm-mapkubeapis/
 
 FROM alpine:3.12
 RUN apk add -U --no-cache ca-certificates jq bash git && \

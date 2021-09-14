@@ -52,7 +52,14 @@ helm_update() {
 
 	# Upgrade only if the chart is already deployed
 	if [[ "${STATUS}" == "deployed" ]]; then
-		echo Already installed ${NAME}, upgrading
+		echo "Already installed ${NAME}"
+		if [[ "${HELM}" == "helm_v3" ]]; then
+			${HELM} mapkubeapis ${NAME} --namespace ${TARGET_NAMESPACE}
+		else
+			${HELM} mapkubeapis ${NAME} --v2
+		fi
+
+		echo "Upgrading ${NAME}"
 		shift 1
 		${HELM} upgrade "$@" ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
 		exit
