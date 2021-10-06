@@ -100,7 +100,14 @@ helm_repo_init() {
 	fi
 
 	if [[ -n "${REPO}" ]]; then
-		${HELM} repo add ${NAME%%/*} ${REPO}
+	  REPO_REGEX="^((http|https):\/\/)((\S+):(\S+)@)?(\S+\.+\S+)$"
+	  [[ ${REPO} =~ ${REPO_REGEX} ]]
+	  if [[ ${#BASH_REMATCH[*]} -eq 7 && -n ${BASH_REMATCH[4]} && -n ${BASH_REMATCH[5]} ]]; then
+	    echo "add private repo with username and password"
+	    ${HELM} repo add ${NAME%%/*} ${BASH_REMATCH[1]}${BASH_REMATCH[6]} --username ${BASH_REMATCH[4]} --password ${BASH_REMATCH[5]}
+	  else
+		  ${HELM} repo add ${NAME%%/*} ${REPO}
+		fi
 		${HELM} repo update
 	fi
 }
