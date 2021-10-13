@@ -132,6 +132,55 @@ volumes:
 
 ---
 kind: pipeline
+name: s390x
+type: docker
+
+platform:
+  os: linux
+  arch: amd64
+
+node:
+  arch: s390x
+
+steps:
+- name: build
+  image: rancher/dapper:v0.5.7
+  failure: ignore
+  commands:
+  - dapper ci
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: docker-publish
+  image: plugins/docker
+  failure: ignore
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/klipper-helm"
+    tag: "${DRONE_TAG}-s390x"
+    username:
+      from_secret: docker_username
+    build_args:
+    - ARCH=s390x
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
 name: manifest
 
 platform:
@@ -150,8 +199,10 @@ steps:
       - linux/amd64
       - linux/arm64
       - linux/arm
+      - linux/s390x
     target: "rancher/klipper-helm:${DRONE_TAG}"
     template: "rancher/klipper-helm:${DRONE_TAG}-ARCH"
+    ignore_missing: true
   when:
     instance:
     - drone-publish.k3s.io
@@ -165,5 +216,6 @@ depends_on:
 - amd64
 - arm64
 - arm
+- s390x
 
 ...
