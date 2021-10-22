@@ -134,7 +134,7 @@ if [[ "${BOOTSTRAP}" != "true" ]]; then
 	export HELM_HOST=127.0.0.1:44134
 
 	helm_v2 init --skip-refresh --client-only --stable-repo-url ${STABLE_REPO_URL}
-	V2_CHART_EXISTS=$(helm_v2 ls --all "^${NAME}\$" --output json | jq -r '.Releases | length')
+	V2_CHART_EXISTS=$(timeout -s KILL 30 helm_v2 ls --all "^${NAME}\$" --output json | jq -r '.Releases | length')
 fi
 
 if [[ "${V2_CHART_EXISTS}" == "1" ]] || [[ "${HELM_VERSION}" == "v2" ]]; then
