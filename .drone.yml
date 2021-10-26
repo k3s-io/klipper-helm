@@ -211,7 +211,6 @@ steps:
     - refs/tags/*
     event:
     - tag
-
 depends_on:
 - amd64
 - arm64
