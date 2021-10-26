@@ -117,16 +117,6 @@ helm_content_decode() {
 	set +e
 }
 
-# tiller sometimes crashes and needs to be restarted to prevent helm_v2 from hanging forever.
-# ref: https://github.com/helm/helm/issues/4753
-run_tiller() {
-	while true; do
-		tiller --listen=127.0.0.1:44134 --storage=secret
-		echo "Restarting tiller..."
-		sleep 5
-	done
-}
-
 export SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 export SSL_CERT_DIR=/etc/ssl/certs
 export HELM_TLS_CA_CERT=${SSL_CERT_FILE}
@@ -140,11 +130,11 @@ CHART="${CHART//%\{KUBERNETES_API\}%/${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SER
 set +v -x
 
 if [[ "${BOOTSTRAP}" != "true" ]]; then
-	run_tiller &
+	tiller --listen=127.0.0.1:44134 --storage=secret &
 	export HELM_HOST=127.0.0.1:44134
 
 	helm_v2 init --skip-refresh --client-only --stable-repo-url ${STABLE_REPO_URL}
-	V2_CHART_EXISTS=$(helm_v2 ls --all "^${NAME}\$" --output json | jq -r '.Releases | length')
+	V2_CHART_EXISTS=$(timeout -s KILL 30 helm_v2 ls --all "^${NAME}\$" --output json | jq -r '.Releases | length')
 fi
 
 if [[ "${V2_CHART_EXISTS}" == "1" ]] || [[ "${HELM_VERSION}" == "v2" ]]; then
