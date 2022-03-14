@@ -67,15 +67,20 @@ helm_update() {
 
 	# The chart is in a bad state; try uninstalling it first
 	if [[ "${STATUS}" =~ ^(deleted|failed|null|unknown)$ ]]; then
-		if [[ "${HELM}" == "helm_v3" ]]; then
-			${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE}
+		if [[ "${FAILURE_POLICY:-reinstall}" == "reinstall" ]]; then
+			if [[ "${HELM}" == "helm_v3" ]]; then
+				${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE}
+			else
+				${HELM} "$@" --purge ${NAME}
+			fi
+			echo Deleted
+			# Try installing now that we've uninstalled
+			${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
+			exit
 		else
-			${HELM} "$@" --purge ${NAME}
+			echo "Failure policy is '${FAILURE_POLICY}', not 'reinstall' - waiting for operator intervention"
+			exit
 		fi
-		echo Deleted
-		# Try installing now that we've uninstalled
-		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
-		exit
 	fi
 
 	# No special status handling necessary, do whatever we were asked to do
