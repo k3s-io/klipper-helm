@@ -16,11 +16,14 @@ helm_update() {
 	# Uninstall or delete chart if asked to delete and the chart was found; otherwise no-op
 	if [[ "$1" = "delete" ]]; then
 		if [[ -z "${INSTALLED_VERSION}" ]]; then
+			echo "No ${HELM} chart installed; nothing to delete" >> ${TERM_LOG}
 			exit
 		fi
 		if [[ "${HELM}" == "helm_v3" ]]; then
+			echo "Uninstalling ${HELM} chart" >> ${TERM_LOG}
 			${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} || true
 		else
+			echo "Deleting and purging ${HELM} chart" >> ${TERM_LOG}
 			${HELM} delete ${NAME} || true
 			${HELM} "$@" --purge ${NAME}
 		fi
@@ -29,6 +32,7 @@ helm_update() {
 
 	# No current version and status, safe to install
 	if [[ "${INSTALLED_VERSION}" =~ ^(|null)$ ]] && [[ "${STATUS}" =~ ^(|null)$ ]]; then
+		echo "Installing ${HELM} chart" >> ${TERM_LOG}
 		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
 		exit
 	fi
@@ -36,11 +40,13 @@ helm_update() {
 	# If a previous helm_v3 operation was interrupted unexpectedly, set it to failed.
 	if [[ "${STATUS}" =~ ^(pending-install|pending-upgrade|pending-rollback)$ ]] && [[ "${HELM}" == "helm_v3" ]]; then
 		echo Previous helm job was interrupted, updating status from ${STATUS} to failed
+		echo "Resetting ${HELM} release status from '${STATUS}' to 'failed'" >> ${TERM_LOG}
 		${HELM} set-status ${NAME} failed --namespace ${TARGET_NAMESPACE}
 
 		# Upgrades can be retried; install and rollback will be handled as failure below.
 		# If this upgrade also fails, retries of the job will handle that as failure due to the release state change.
 		if [[ "${STATUS}" == "pending-upgrade" ]]; then
+			echo "Retrying upgrade of ${HELM} chart" >> ${TERM_LOG}
 			echo "Retrying upgrade of ${NAME}"
 			shift 1
 			${HELM} upgrade "$@" ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
@@ -59,6 +65,7 @@ helm_update() {
 			${HELM} mapkubeapis ${NAME} --v2
 		fi
 
+		echo "Upgrading ${HELM} chart" >> ${TERM_LOG}
 		echo "Upgrading ${NAME}"
 		shift 1
 		${HELM} upgrade "$@" ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
@@ -69,21 +76,26 @@ helm_update() {
 	if [[ "${STATUS}" =~ ^(deleted|failed|null|unknown)$ ]]; then
 		if [[ "${FAILURE_POLICY:-reinstall}" == "reinstall" ]]; then
 			if [[ "${HELM}" == "helm_v3" ]]; then
+				echo "Uninstalling ${STATUS} ${HELM} chart" >> ${TERM_LOG}
 				${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE}
 			else
+				echo "Purging ${STATUS} ${HELM} chart" >> ${TERM_LOG}
 				${HELM} "$@" --purge ${NAME}
 			fi
 			echo Deleted
 			# Try installing now that we've uninstalled
+			echo "Installing ${HELM} chart" >> ${TERM_LOG}
 			${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
 			exit
 		else
-			echo "Failure policy is '${FAILURE_POLICY}', not 'reinstall' - waiting for operator intervention"
-			exit
+			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention" >> ${TERM_LOG}
+			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention"
+			exit 1
 		fi
 	fi
 
 	# No special status handling necessary, do whatever we were asked to do
+	echo "Installing ${HELM} chart" >> ${TERM_LOG}
 	${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
 }
 
@@ -122,6 +134,7 @@ helm_content_decode() {
 	set +e
 }
 
+export TERM_LOG=/dev/termination-log
 export SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 export SSL_CERT_DIR=/etc/ssl/certs
 export HELM_TLS_CA_CERT=${SSL_CERT_FILE}
@@ -144,6 +157,7 @@ fi
 
 if [[ "${V2_CHART_EXISTS}" == "1" ]] || [[ "${HELM_VERSION}" == "v2" ]]; then
 	if [[ "${BOOTSTRAP}" == "true" ]]; then
+		echo "Can't bootstrap ${HELM} chart" >> ${TERM_LOG}
 		echo "Error: bootstrap flag can't be set with helm version 2 charts, please remove the bootstrap flag and update the chart"
 		exit 1
 	fi
