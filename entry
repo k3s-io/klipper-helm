@@ -33,7 +33,7 @@ helm_update() {
 	# No current version and status, safe to install
 	if [[ "${INSTALLED_VERSION}" =~ ^(|null)$ ]] && [[ "${STATUS}" =~ ^(|null)$ ]]; then
 		echo "Installing ${HELM} chart" >> ${TERM_LOG}
-		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
+		${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
 		exit
 	fi
 
@@ -49,7 +49,7 @@ helm_update() {
 			echo "Retrying upgrade of ${HELM} chart" >> ${TERM_LOG}
 			echo "Retrying upgrade of ${NAME}"
 			shift 1
-			${HELM} upgrade "$@" ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
+			${HELM} upgrade "$@" ${NAME} ${CHART} ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
 			exit
 		else
 			STATUS=failed
@@ -68,7 +68,7 @@ helm_update() {
 		echo "Upgrading ${HELM} chart" >> ${TERM_LOG}
 		echo "Upgrading ${NAME}"
 		shift 1
-		${HELM} upgrade "$@" ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
+		${HELM} upgrade "$@" ${NAME} ${CHART} ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
 		exit
 	fi
 
@@ -85,7 +85,7 @@ helm_update() {
 			echo Deleted
 			# Try installing now that we've uninstalled
 			echo "Installing ${HELM} chart" >> ${TERM_LOG}
-			${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
+			${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
 			exit
 		else
 			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention" >> ${TERM_LOG}
@@ -96,7 +96,7 @@ helm_update() {
 
 	# No special status handling necessary, do whatever we were asked to do
 	echo "Installing ${HELM} chart" >> ${TERM_LOG}
-	${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${TIMEOUT_ARG} ${VALUES}
+	${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
 }
 
 helm_repo_init() {
@@ -134,12 +134,14 @@ helm_content_decode() {
 	set +e
 }
 
+export CA_FILE=/config/ca-file.pem
 export TERM_LOG=/dev/termination-log
 export SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 export SSL_CERT_DIR=/etc/ssl/certs
 export HELM_TLS_CA_CERT=${SSL_CERT_FILE}
 HELM="helm_v3"
 NAME_ARG=""
+CA_FILE_ARG=""
 TIMEOUT_ARG=""
 JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
 
@@ -164,6 +166,10 @@ if [[ "${V2_CHART_EXISTS}" == "1" ]] || [[ "${HELM_VERSION}" == "v2" ]]; then
 	HELM="helm_v2"
 	NAME_ARG="--name"
 	JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
+fi
+
+if [[ -f "${CA_FILE}" ]]; then
+	CA_FILE_ARG="--ca-file ${CA_FILE}"
 fi
 
 if [[ -n "${TIMEOUT}" ]]; then
