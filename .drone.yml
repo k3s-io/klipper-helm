@@ -144,7 +144,6 @@ node:
 steps:
 - name: build
   image: rancher/dapper:v0.5.8
-  failure: ignore
   commands:
   - dapper ci
   volumes:
@@ -153,7 +152,6 @@ steps:
 
 - name: docker-publish
   image: rancher/drone-images:docker-s390x
-  failure: ignore
   volumes:
     - name: docker
       path: /var/run/docker.sock
@@ -203,7 +201,6 @@ steps:
       - linux/s390x
     target: "rancher/klipper-helm:${DRONE_TAG}"
     template: "rancher/klipper-helm:${DRONE_TAG}-ARCH"
-    ignore_missing: true
   when:
     instance:
     - drone-publish.k3s.io
