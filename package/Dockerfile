@@ -1,13 +1,13 @@
-FROM alpine:3.16 as extract
+FROM alpine:3.17 as extract
 RUN apk add -U curl ca-certificates
 ARG ARCH
 RUN curl https://get.helm.sh/helm-v2.17.0-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 RUN mv /usr/bin/helm /usr/bin/helm_v2
-RUN curl https://get.helm.sh/helm-v3.10.2-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
+RUN curl https://get.helm.sh/helm-v3.10.3-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 RUN mv /usr/bin/helm /usr/bin/helm_v3
 COPY entry /usr/bin/
 
-FROM golang:1.19-alpine3.16 as plugins
+FROM golang:1.19-alpine3.17 as plugins
 RUN apk add -U curl ca-certificates build-base binutils-gold
 ARG ARCH
 COPY --from=extract /usr/bin/helm_v3 /usr/bin/helm
@@ -23,7 +23,7 @@ RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
            /go/src/github.com/helm/helm-mapkubeapis/config \
            /root/.local/share/helm/plugins/helm-mapkubeapis/
 
-FROM alpine:3.16
+FROM alpine:3.17
 ARG BUILDDATE
 LABEL buildDate=$BUILDDATE
 RUN apk --no-cache upgrade && \
