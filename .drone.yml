@@ -105,7 +105,8 @@ steps:
     path: /var/run/docker.sock
 
 - name: docker-publish
-  image: plugins/docker
+  # latest tag is no longer available for ARM 32-bit
+  image: plugins/docker:linux-arm
   settings:
     dockerfile: package/Dockerfile
     password:
