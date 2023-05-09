@@ -1,11 +1,11 @@
-FROM golang:1.19-alpine3.17
+FROM golang:1.20-alpine3.17
 
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
 
 RUN apk -U add bash git gcc musl-dev docker vim less file curl wget ca-certificates
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
-    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/v1.45.2/install.sh | sh -s; \
+    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.52.2; \
     fi
 
 ENV DAPPER_ENV REPO TAG DRONE_TAG
