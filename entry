@@ -21,7 +21,7 @@ helm_update() {
 		fi
 		if [[ "${HELM}" == "helm_v3" ]]; then
 			echo "Uninstalling ${HELM} chart" >> ${TERM_LOG}
-			${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} || true
+			${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait || true
 		else
 			echo "Deleting and purging ${HELM} chart" >> ${TERM_LOG}
 			${HELM} delete ${NAME} || true
@@ -77,7 +77,7 @@ helm_update() {
 		if [[ "${FAILURE_POLICY:-reinstall}" == "reinstall" ]]; then
 			if [[ "${HELM}" == "helm_v3" ]]; then
 				echo "Uninstalling ${STATUS} ${HELM} chart" >> ${TERM_LOG}
-				${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE}
+				${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait
 			else
 				echo "Purging ${STATUS} ${HELM} chart" >> ${TERM_LOG}
 				${HELM} "$@" --purge ${NAME}
