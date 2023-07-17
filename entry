@@ -170,7 +170,7 @@ fi
 
 set +v -x
 
-if [[ "${BOOTSTRAP}" != "true" ]]; then
+if [[ "${BOOTSTRAP}" != "true" ]] && [[ -x "$(command -v helm_v2)" ]]; then
 	tiller --listen=127.0.0.1:44134 --storage=secret &
 	export HELM_HOST=127.0.0.1:44134
 
@@ -179,14 +179,19 @@ if [[ "${BOOTSTRAP}" != "true" ]]; then
 fi
 
 if [[ "${V2_CHART_EXISTS}" == "1" ]] || [[ "${HELM_VERSION}" == "v2" ]]; then
-	if [[ "${BOOTSTRAP}" == "true" ]]; then
-		echo "Can't bootstrap ${HELM} chart" >> ${TERM_LOG}
-		echo "Error: bootstrap flag can't be set with helm version 2 charts, please remove the bootstrap flag and update the chart"
-		exit 1
+	if ! [[ -x "$(command -v helm_v2)" ]]; then
+		echo "Helm v2 requested for this command, but it is not available, trying with v3" >> ${TERM_LOG}
+		echo "Helm v2 requested for this command, but it is not available, trying with v3"
+	else
+		if [[ "${BOOTSTRAP}" == "true" ]]; then
+			echo "Can't bootstrap ${HELM} chart" >> ${TERM_LOG}
+			echo "Error: bootstrap flag can't be set with helm version 2 charts, please remove the bootstrap flag and update the chart"
+			exit 1
+		fi
+		HELM="helm_v2"
+		NAME_ARG="--name"
+		JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
 	fi
-	HELM="helm_v2"
-	NAME_ARG="--name"
-	JQ_CMD='"\(.Releases[0].AppVersion),\(.Releases[0].Status)"'
 fi
 
 shopt -s nullglob
