@@ -158,7 +158,7 @@ NAME_ARG=""
 CA_FILE_ARG=""
 TIMEOUT_ARG=""
 PASS_CREDENTIALS_ARG=""
-JQ_CMD='"\(.[0].app_version),\(.[0].status)"'
+JQ_CMD='"\(.[0].chart),\(.[0].status)"'
 
 set -e -v
 if [[ ${KUBERNETES_SERVICE_HOST} =~ .*:.* ]]; then
