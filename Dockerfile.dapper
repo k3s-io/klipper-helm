@@ -1,13 +1,11 @@
-FROM golang:1.20-alpine3.17
+# need to stick with alpine 3.17 for docker 20.10 until the s390x runners are upgraded
+# ref: https://github.com/alpinelinux/docker-alpine/issues/182
+FROM alpine:3.17
 
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
 
-RUN apk -U add bash git gcc musl-dev docker vim less file curl wget ca-certificates
-RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
-    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.52.2; \
-    fi
-
+RUN apk -U add bash docker-cli git
 ENV DAPPER_ENV REPO TAG DRONE_TAG
 ENV DAPPER_SOURCE /go/src/github.com/k3s-io/klipper-helm/
 ENV DAPPER_OUTPUT ./bin ./dist
