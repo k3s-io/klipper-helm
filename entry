@@ -85,7 +85,7 @@ helm_update() {
 			echo Deleted
 			# Try installing now that we've uninstalled
 			echo "Installing ${HELM} chart" >> ${TERM_LOG}
-			${HELM} "$@" ${NAME_ARG} ${NAME} ${CHART} ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
+			${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
 			exit
 		else
 			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention" >> ${TERM_LOG}
