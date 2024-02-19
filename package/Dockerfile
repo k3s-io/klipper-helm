@@ -1,4 +1,4 @@
-FROM alpine:3.18 as extract
+FROM alpine:3.19 as extract
 RUN apk add -U curl ca-certificates
 ARG ARCH
 RUN curl https://get.helm.sh/helm-v2.17.0-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
@@ -23,7 +23,7 @@ RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
            /go/src/github.com/helm/helm-mapkubeapis/config \
            /root/.local/share/helm/plugins/helm-mapkubeapis/
 
-FROM alpine:3.18
+FROM alpine:3.19
 ARG BUILDDATE
 LABEL buildDate=$BUILDDATE
 RUN apk --no-cache upgrade && \
