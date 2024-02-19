@@ -1,6 +1,6 @@
 # need to stick with alpine 3.17 for docker 20.10 until the s390x runners are upgraded
 # ref: https://github.com/alpinelinux/docker-alpine/issues/182
-FROM alpine:3.17
+FROM alpine:3.19
 
 ARG DAPPER_HOST_ARCH
 ENV ARCH $DAPPER_HOST_ARCH
