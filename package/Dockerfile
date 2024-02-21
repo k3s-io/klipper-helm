@@ -3,7 +3,7 @@ RUN apk add -U curl ca-certificates
 ARG ARCH
 RUN curl https://get.helm.sh/helm-v2.17.0-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 RUN mv /usr/bin/helm /usr/bin/helm_v2
-RUN curl https://get.helm.sh/helm-v3.12.3-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
+RUN curl https://get.helm.sh/helm-v3.13.0-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 RUN mv /usr/bin/helm /usr/bin/helm_v3
 COPY entry /usr/bin/
 
