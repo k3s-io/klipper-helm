@@ -1,0 +1,19 @@
+name: Merge
+
+on:
+  push:
+    branches:
+      - add-gh-workflows
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+  push-to-ghcr:
+    if: ${{ always() && contains(join(needs.*.result, ','), 'success') }} # if all `needs` jobs are successful
+    needs: [build]
+    secrets: inherit
+    uses: ./.github/workflows/push-to-ghcr.yml
+  cleanup:
+    needs: [build, push-to-ghcr]
+    secrets: inherit
+    uses: ./.github/workflows/cleanup.yml
