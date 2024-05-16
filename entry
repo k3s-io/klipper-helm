@@ -127,6 +127,11 @@ helm_repo_init() {
 				PASS_CREDENTIALS_ARG="--pass-credentials"
 			fi
 			cat ${AUTH_DIR}/password | ${HELM} repo add ${CA_FILE_ARG} ${PASS_CREDENTIALS_ARG} --username "$(cat ${AUTH_DIR}/username)" --password-stdin ${NAME%%/*} ${REPO}
+		elif [[ -f "${AUTH_DIR}/tls.crt" ]] && [[ -f "${AUTH_DIR}/tls.key" ]]; then
+			if [[ "${AUTH_PASS_CREDENTIALS}" == "true" ]]; then
+				PASS_CREDENTIALS_ARG="--pass-credentials"
+			fi
+			${HELM} repo add ${CA_FILE_ARG} ${PASS_CREDENTIALS_ARG} --cert-file ${AUTH_DIR}/tls.crt --key-file ${AUTH_DIR}/tls.key ${NAME%%/*} ${REPO}
 		else
 			${HELM} repo add ${CA_FILE_ARG} ${NAME%%/*} ${REPO}
 		fi
