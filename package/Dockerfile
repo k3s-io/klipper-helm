@@ -1,16 +1,13 @@
 FROM alpine:3.20 as extract
 RUN apk add -U curl ca-certificates
 ARG ARCH
-RUN curl -sL https://get.helm.sh/helm-v2.17.0-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
-RUN mv /usr/bin/helm /usr/bin/helm_v2
 RUN curl -sL https://get.helm.sh/helm-v3.15.3-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
-RUN mv /usr/bin/helm /usr/bin/helm_v3
 COPY entry /usr/bin/
 
 FROM golang:1.22-alpine3.20 as plugins
 RUN apk add -U curl ca-certificates build-base binutils-gold
 ARG ARCH
-COPY --from=extract /usr/bin/helm_v3 /usr/bin/helm
+COPY --from=extract /usr/bin/helm /usr/bin/helm
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     curl -sL https://github.com/k3s-io/helm-set-status/archive/refs/tags/v0.2.0.tar.gz | tar xvzf - --strip-components=1 -C /go/src/github.com/k3s-io/helm-set-status && \
     cd /go/src/github.com/k3s-io/helm-set-status && \
@@ -37,7 +34,7 @@ RUN apk --no-cache upgrade && \
     adduser -D -u 1000 -s /bin/bash klipper-helm
 WORKDIR /home/klipper-helm
 COPY --chown=1000:1000 --from=plugins /root/.local/share/helm/plugins/ /home/klipper-helm/.local/share/helm/plugins/
-COPY --from=extract /usr/bin/helm_v2 /usr/bin/helm_v3 /usr/bin/tiller /usr/bin/entry /usr/bin/
+COPY --from=extract /usr/bin/helm /usr/bin/entry /usr/bin/
 ENTRYPOINT ["entry"]
 ENV STABLE_REPO_URL=https://charts.helm.sh/stable/
 ENV TIMEOUT=
