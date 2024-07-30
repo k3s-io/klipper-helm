@@ -150,7 +150,7 @@ set +v -x
 if [[ "${HELM_VERSION}" == "v2" ]]; then
 	echo "Helm v2 is EOL effective 2020-11-13; upgrade your chart to helm v3" >> ${TERM_LOG}
 	echo "Helm v2 is EOL effective 2020-11-13; upgrade your chart to helm v3"
-	exit 1
+	exit 64
 fi
 
 shopt -s nullglob
