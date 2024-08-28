@@ -23,12 +23,12 @@ helm_update() {
 	# No current version and status, safe to install
 	if [[ "${INSTALLED_VERSION}" =~ ^(|null)$ ]] && [[ "${STATUS}" =~ ^(|null)$ ]]; then
 		echo "Installing ${HELM} chart" >> ${TERM_LOG}
-		${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
+		${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
 		exit
 	fi
 
 	# If a previous helm operation was interrupted unexpectedly, set it to failed.
-	if [[ "${STATUS}" =~ ^(pending-install|pending-upgrade|pending-rollback)$ ]]; then
+	if [[ "${STATUS}" =~ ^(pending-install|pending-upgrade|pending-rollback|uninstalling)$ ]]; then
 		echo Previous helm job was interrupted, updating status from ${STATUS} to failed
 		echo "Resetting ${HELM} release status from '${STATUS}' to 'failed'" >> ${TERM_LOG}
 		${HELM} set-status ${NAME} failed --namespace ${TARGET_NAMESPACE}
@@ -39,7 +39,7 @@ helm_update() {
 			echo "Retrying upgrade of ${HELM} chart" >> ${TERM_LOG}
 			echo "Retrying upgrade of ${NAME}"
 			shift 1
-			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
+			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
 			exit
 		else
 			STATUS=failed
@@ -47,14 +47,14 @@ helm_update() {
 	fi
 
 	# Upgrade only if the chart is already deployed
-	if [[ "${STATUS}" == "deployed" ]]; then
+	if [[ "${STATUS}" =~ ^deployed$ ]]; then
 		echo "Already installed ${NAME}"
 		${HELM} mapkubeapis ${NAME} --namespace ${TARGET_NAMESPACE}
 
 		echo "Upgrading ${HELM} chart" >> ${TERM_LOG}
 		echo "Upgrading ${NAME}"
 		shift 1
-		${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
+		${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
 		exit
 	fi
 
@@ -66,7 +66,7 @@ helm_update() {
 			echo Deleted
 			# Try installing now that we've uninstalled
 			echo "Installing ${HELM} chart" >> ${TERM_LOG}
-			${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
+			${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
 			exit
 		else
 			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention" >> ${TERM_LOG}
@@ -77,7 +77,7 @@ helm_update() {
 
 	# No special status handling necessary, do whatever we were asked to do
 	echo "Installing ${HELM} chart" >> ${TERM_LOG}
-	${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${TIMEOUT_ARG} ${VALUES}
+	${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
 }
 
 helm_repo_init() {
@@ -89,7 +89,7 @@ helm_repo_init() {
 	fi
 
 	if [[ ${CHART} == stable/* ]]; then
-		${HELM} repo add ${CA_FILE_ARG} stable ${STABLE_REPO_URL}
+		${HELM} repo add ${CA_FILE_ARG} ${INSECURE_TLS_ARG} stable ${STABLE_REPO_URL}
 		${HELM} repo update
 	fi
 
@@ -98,14 +98,14 @@ helm_repo_init() {
 			if [[ "${AUTH_PASS_CREDENTIALS}" == "true" ]]; then
 				PASS_CREDENTIALS_ARG="--pass-credentials"
 			fi
-			cat ${AUTH_DIR}/password | ${HELM} repo add ${CA_FILE_ARG} ${PASS_CREDENTIALS_ARG} --username "$(cat ${AUTH_DIR}/username)" --password-stdin ${NAME%%/*} ${REPO}
+			cat ${AUTH_DIR}/password | ${HELM} repo add ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PASS_CREDENTIALS_ARG} --username "$(cat ${AUTH_DIR}/username)" --password-stdin ${NAME%%/*} ${REPO}
 		elif [[ -f "${AUTH_DIR}/tls.crt" ]] && [[ -f "${AUTH_DIR}/tls.key" ]]; then
 			if [[ "${AUTH_PASS_CREDENTIALS}" == "true" ]]; then
 				PASS_CREDENTIALS_ARG="--pass-credentials"
 			fi
-			${HELM} repo add ${CA_FILE_ARG} ${PASS_CREDENTIALS_ARG} --cert-file ${AUTH_DIR}/tls.crt --key-file ${AUTH_DIR}/tls.key ${NAME%%/*} ${REPO}
+			${HELM} repo add ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PASS_CREDENTIALS_ARG} --cert-file ${AUTH_DIR}/tls.crt --key-file ${AUTH_DIR}/tls.key ${NAME%%/*} ${REPO}
 		else
-			${HELM} repo add ${CA_FILE_ARG} ${NAME%%/*} ${REPO}
+			${HELM} repo add ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${NAME%%/*} ${REPO}
 		fi
 		${HELM} repo update
 	fi
@@ -133,6 +133,8 @@ export HELM_TLS_CA_CERT=${SSL_CERT_FILE}
 HELM="helm"
 NAME_ARG=""
 CA_FILE_ARG=""
+INSECURE_TLS_ARG=""
+PLAIN_HTTP_ARG=""
 TIMEOUT_ARG=""
 PASS_CREDENTIALS_ARG=""
 JQ_CMD='"\(.[0].chart),\(.[0].status)"'
@@ -167,6 +169,14 @@ done
 
 if [[ -f "/tmp/ca-file.pem" ]]; then
 	CA_FILE_ARG="--ca-file /tmp/ca-file.pem"
+fi
+
+if [[ "${INSECURE_SKIP_TLS_VERIFY}" == "true" ]]; then
+  INSECURE_TLS_ARG="--insecure-skip-tls-verify"
+fi
+
+if [[ "${PLAIN_HTTP}" == "true" ]]; then
+  PLAIN_HTTP_ARG="--plain-http"
 fi
 
 if [[ -n "${TIMEOUT}" ]]; then
