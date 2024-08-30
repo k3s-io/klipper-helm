@@ -16,7 +16,7 @@ helm_update() {
 			exit
 		fi
 		echo "Uninstalling ${HELM} chart" >> ${TERM_LOG}
-		${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait || true
+		${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait ${TIMEOUT_ARG} || true
 		exit
 	fi
 
@@ -43,6 +43,7 @@ helm_update() {
 			exit
 		else
 			STATUS=failed
+			REINSTALL_ACTION=reinstall
 		fi
 	fi
 
@@ -58,16 +59,24 @@ helm_update() {
 		exit
 	fi
 
-	# The chart is in a bad state; try uninstalling it first
+	# The chart is in a bad state; try reinstalling, upgrading, or installing
 	if [[ "${STATUS}" =~ ^(deleted|failed|null|unknown)$ ]]; then
 		if [[ "${FAILURE_POLICY:-reinstall}" == "reinstall" ]]; then
-			echo "Uninstalling ${STATUS} ${HELM} chart" >> ${TERM_LOG}
-			${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait
-			echo Deleted
-			# Try installing now that we've uninstalled
-			echo "Installing ${HELM} chart" >> ${TERM_LOG}
-			${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
-			exit
+			if [[ "${REINSTALL_ACTION:-upgrade}" == "reinstall" ]]; then
+				echo "Uninstalling ${STATUS} ${HELM} chart" >> ${TERM_LOG}
+				${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait ${TIMEOUT_ARG}
+				echo Deleted
+				# Try installing now that we've uninstalled
+				echo "Installing ${HELM} chart" >> ${TERM_LOG}
+				${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
+				exit
+			else
+				echo "Upgrading or installing ${STATUS} ${HELM} chart" >> ${TERM_LOG}
+				echo "Upgrading or installing ${STATUS} ${NAME}"
+				shift 1
+				${HELM} upgrade --install "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
+				exit
+			fi
 		else
 			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention" >> ${TERM_LOG}
 			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention"
