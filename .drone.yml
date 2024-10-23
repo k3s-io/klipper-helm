@@ -133,6 +133,50 @@ volumes:
 
 ---
 kind: pipeline
+name: riscv64
+type: docker
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build
+  image: rancher/dapper:v0.5.0
+  commands:
+  - dapper ci
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
+
+- name: docker-publish
+  image: plugins/docker
+  settings:
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: "rancher/klipper-helm"
+    tag: "${DRONE_TAG}-riscv64"
+    username:
+      from_secret: docker_username
+    build_args:
+    - ARCH=riscv64
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/head/master
+    - refs/tags/*
+    event:
+    - tag
+
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
 name: manifest
 
 platform:
@@ -151,6 +195,7 @@ steps:
       - linux/amd64
       - linux/arm64
       - linux/arm
+      - linux/riscv64
     target: "rancher/klipper-helm:${DRONE_TAG}"
     template: "rancher/klipper-helm:${DRONE_TAG}-ARCH"
   when:
@@ -166,6 +211,7 @@ depends_on:
 - amd64
 - arm64
 - arm
+- riscv64
 
 ...
 
