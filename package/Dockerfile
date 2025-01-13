@@ -1,7 +1,7 @@
 FROM alpine:3.21 as extract
 RUN apk add -U curl ca-certificates
 ARG ARCH
-RUN curl -sL https://get.helm.sh/helm-v3.16.1-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
+RUN curl -sL https://get.helm.sh/helm-v3.16.4-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 COPY entry /usr/bin/
 
 FROM golang:1.23-alpine3.20 as plugins
