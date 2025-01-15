@@ -9,9 +9,13 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.5.0
+  image: docker:27.5
   commands:
-  - dapper ci
+  - apk add make git bash file
+  - git config --global --add safe.directory /drone/src
+  - make
+  environment:
+    ARCH: "${DRONE_STAGE_ARCH}"
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -19,7 +23,7 @@ steps:
 - name: docker-publish
   image: plugins/docker
   settings:
-    dockerfile: package/Dockerfile
+    dockerfile: Dockerfile
     password:
       from_secret: docker_password
     repo: "rancher/klipper-helm"
@@ -53,9 +57,13 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.5.0
+  image: docker:27.5
   commands:
-  - dapper ci
+  - apk add make git bash file
+  - git config --global --add safe.directory /drone/src
+  - make
+  environment:
+    ARCH: "${DRONE_STAGE_ARCH}"
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -63,7 +71,7 @@ steps:
 - name: docker-publish
   image: plugins/docker
   settings:
-    dockerfile: package/Dockerfile
+    dockerfile: Dockerfile
     password:
       from_secret: docker_password
     repo: "rancher/klipper-helm"
@@ -97,9 +105,13 @@ platform:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.5.0
+  image: docker:27.5
   commands:
-  - dapper ci
+  - apk add make git bash file
+  - git config --global --add safe.directory /drone/src
+  - make
+  environment:
+    ARCH: "${DRONE_STAGE_ARCH}"
   volumes:
   - name: docker
     path: /var/run/docker.sock
