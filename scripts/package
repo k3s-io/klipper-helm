@@ -16,7 +16,7 @@ if echo $TAG | grep -q dirty; then
 fi
 
 IMAGE=${REPO}/klipper-helm:${TAG}
-DOCKERFILE=package/Dockerfile
+DOCKERFILE=Dockerfile
 if [ -e ${DOCKERFILE}.${ARCH} ]; then
     DOCKERFILE=${DOCKERFILE}.${ARCH}
 fi
