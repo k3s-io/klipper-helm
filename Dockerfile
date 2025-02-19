@@ -4,7 +4,7 @@ ARG ARCH
 RUN curl -sL https://get.helm.sh/helm-v3.16.4-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 COPY entry /usr/bin/
 
-FROM golang:1.23-alpine3.20 AS plugins
+FROM golang:1.24-alpine3.20 AS plugins
 RUN apk add -U curl ca-certificates build-base binutils-gold
 ARG ARCH
 COPY --from=extract /usr/bin/helm /usr/bin/helm
