@@ -5,28 +5,39 @@ on:
     types:
       - created
 
+env:
+  DOCKERHUB_REPO: ${{ secrets.DOCKER_USER }}/klipper-helm
+  GHCR_REPO: ghcr.io/${{ github.repository_owner }}/klipper-helm
+
 jobs:
-  release:
-    runs-on: ubuntu-22.04
-    
-    permissions:
-      contents: read
-      packages: write
-    
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - amd64
+          - arm64
+          - arm/v7
     steps:
-      - name: Login to Docker Hub
-        if: github.repository_owner == 'k3s-io'
-        uses: docker/login-action@v3
+      - name: Replace / with -
+        run: |
+          echo "ARCH=${${{ matrix.platform }}//\//-}" >> $GITHUB_ENV
+
+      - name: Docker source meta
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          username: k3s-io
-          password: ${{ secrets.DOCKER_TOKEN }}
-      - name: Login to Docker Hub (forks)
-        if: github.repository_owner != 'k3s-io'
+          images: |
+            ${{ env.DOCKERHUB_REPO }}
+            ${{ env.GHCR_REPO }}
+
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_TOKEN }}
-
+      
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -40,13 +51,82 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
+          platforms: linux/${{ matrix.platform }}
+          # Push both the digest and a platform-specific tag, digest 
+          # is used for the manifest merge step
           tags: |
-            ${{ github.repository_owner }}/klipper-helm:latest
-            ${{ github.repository_owner }}/klipper-helm:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/klipper-helm:latest
-            ghcr.io/${{ github.repository_owner }}/klipper-helm:${{ github.ref_name }}
+            ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}-${{ env.ARCH }}
+            ${{ env.GHCR_REPO }}:${{ github.ref_name }}-${{ env.ARCH }}
+          outputs: type=image,"name=${{ env.DOCKERHUB_REPO }},${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.ARCH }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+   
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+  
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_REPO }}
+            ${{ env.GHCR_REPO }}
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.DOCKERHUB_REPO }}@sha256:%s ' *)
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.GHCR_REPO }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.DOCKERHUB_REPO }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.GHCR_REPO }}:${{ steps.meta.outputs.version }}
