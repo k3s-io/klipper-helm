@@ -115,7 +115,24 @@ jobs:
             ${{ env.DOCKERHUB_REPO }}
             ${{ env.GHCR_REPO }}
 
-      - name: Login to Docker Hub
+      - name: "Read Vault secrets"
+        if: github.repository_owner == 'k3s-io'
+        uses: rancher-eio/read-vault-secrets@main
+        with:
+          secrets: |
+            secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials username | DOCKER_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials password | DOCKER_TOKEN ;
+        
+      - name: Login to DockerHub with Rancher Secrets
+        if: github.repository_owner == 'k3s-io'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_TOKEN }}
+    
+      # For forks, setup DockerHub login with GHA secrets
+      - name: Login to DockerHub with GHA Secrets
+        if: github.repository_owner != 'k3s-io'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
