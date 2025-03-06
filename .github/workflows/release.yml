@@ -11,6 +11,11 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write # needed for the Vault authentication
+
     steps:
       - name: Set DOCKERHUB_REPO
         run: |
@@ -93,6 +98,11 @@ jobs:
         platform:
           - arm64
           - arm/v7
+
+    permissions:
+      contents: read
+      id-token: write # needed for the Vault authentication
+
     steps:
       - name: Replace / with -
         run: |
@@ -181,6 +191,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write # needed for the Vault authentication
 
     steps:
       - name: Download digests
