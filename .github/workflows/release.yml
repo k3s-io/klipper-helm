@@ -11,13 +11,18 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write # needed for the Vault authentication
+
     steps:
       - name: Set DOCKERHUB_REPO
         run: |
-          if [ "${{ github.repository_owner }}" != "k3s-io" ]; then
-            echo "DOCKERHUB_REPO=${{ secrets.DOCKER_USERNAME }}/klipper-helm" >> $GITHUB_ENV
+          if [ "${{ github.repository_owner }}" == "k3s-io" ]; then
+            echo "DOCKERHUB_REPO=rancher/klipper-helm" >> $GITHUB_ENV
           else
-            echo "DOCKERHUB_REPO=${{ github.repository_owner }}/klipper-helm" >> $GITHUB_ENV
+            echo "DOCKERHUB_REPO=${{ secrets.DOCKER_USERNAME }}/klipper-helm" >> $GITHUB_ENV
           fi
 
       - name: Docker source meta
@@ -33,8 +38,8 @@ jobs:
         uses: rancher-eio/read-vault-secrets@main
         with:
           secrets: |
-            secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials username | DOCKER_USERNAME ;
-            secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials password | DOCKER_TOKEN ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials username | DOCKER_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials password | DOCKER_TOKEN ;
     
       - name: Login to DockerHub with Rancher Secrets
         if: github.repository_owner == 'k3s-io'
@@ -93,6 +98,11 @@ jobs:
         platform:
           - arm64
           - arm/v7
+
+    permissions:
+      contents: read
+      id-token: write # needed for the Vault authentication
+
     steps:
       - name: Replace / with -
         run: |
@@ -101,10 +111,10 @@ jobs:
       
       - name: Set DOCKERHUB_REPO
         run: |
-          if [ "${{ github.repository_owner }}" != "k3s-io" ]; then
-            echo "DOCKERHUB_REPO=${{ secrets.DOCKER_USERNAME }}/klipper-helm" >> $GITHUB_ENV
+          if [ "${{ github.repository_owner }}" == "k3s-io" ]; then
+            echo "DOCKERHUB_REPO=rancher/klipper-helm" >> $GITHUB_ENV
           else
-            echo "DOCKERHUB_REPO=${{ github.repository_owner }}/klipper-helm" >> $GITHUB_ENV
+            echo "DOCKERHUB_REPO=${{ secrets.DOCKER_USERNAME }}/klipper-helm" >> $GITHUB_ENV
           fi
 
       - name: Docker source meta
@@ -120,8 +130,8 @@ jobs:
         uses: rancher-eio/read-vault-secrets@main
         with:
           secrets: |
-            secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials username | DOCKER_USERNAME ;
-            secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials password | DOCKER_TOKEN ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials username | DOCKER_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials password | DOCKER_TOKEN ;
         
       - name: Login to DockerHub with Rancher Secrets
         if: github.repository_owner == 'k3s-io'
@@ -181,6 +191,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write # needed for the Vault authentication
 
     steps:
       - name: Download digests
@@ -192,10 +203,10 @@ jobs:
       
       - name: Set DOCKERHUB_REPO
         run: |
-          if [ "${{ github.repository_owner }}" != "k3s-io" ]; then
-            echo "DOCKERHUB_REPO=${{ secrets.DOCKER_USERNAME }}/klipper-helm" >> $GITHUB_ENV
+          if [ "${{ github.repository_owner }}" == "k3s-io" ]; then
+            echo "DOCKERHUB_REPO=rancher/klipper-helm" >> $GITHUB_ENV
           else
-            echo "DOCKERHUB_REPO=${{ github.repository_owner }}/klipper-helm" >> $GITHUB_ENV
+            echo "DOCKERHUB_REPO=${{ secrets.DOCKER_USERNAME }}/klipper-helm" >> $GITHUB_ENV
           fi
 
       - name: "Read Vault secrets"
@@ -203,8 +214,8 @@ jobs:
         uses: rancher-eio/read-vault-secrets@main
         with:
           secrets: |
-            secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials username | DOCKER_USERNAME ;
-            secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials password | DOCKER_TOKEN ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials username | DOCKER_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials password | DOCKER_TOKEN ;
       
       - name: Login to DockerHub with Rancher Secrets
         if: github.repository_owner == 'k3s-io'
