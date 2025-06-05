@@ -1,4 +1,4 @@
-FROM alpine:3.21 AS extract
+FROM alpine:3.22 AS extract
 RUN apk add -U curl ca-certificates
 ARG TARGETARCH
 RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
@@ -9,7 +9,7 @@ RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
     curl -sL https://get.helm.sh/helm-v3.18.1-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 COPY entry /usr/bin/
 
-FROM golang:1.24-alpine3.20 AS plugins
+FROM golang:1.24-alpine3.22 AS plugins
 RUN apk add -U curl ca-certificates build-base binutils-gold
 COPY --from=extract /usr/bin/helm /usr/bin/helm
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
@@ -26,7 +26,7 @@ RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
            /go/src/github.com/helm/helm-mapkubeapis/config \
            /root/.local/share/helm/plugins/helm-mapkubeapis/
 
-FROM alpine:3.21
+FROM alpine:3.22
 ARG BUILDDATE
 LABEL buildDate=$BUILDDATE
 RUN apk --no-cache upgrade && \
