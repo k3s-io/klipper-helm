@@ -9,7 +9,7 @@ RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
     curl -sL https://get.helm.sh/helm-v3.18.1-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 COPY entry /usr/bin/
 
-FROM golang:1.24-alpine3.22 AS plugins
+FROM golang:1.24.4-alpine3.22 AS plugins
 RUN apk add -U curl ca-certificates build-base binutils-gold
 COPY --from=extract /usr/bin/helm /usr/bin/helm
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
