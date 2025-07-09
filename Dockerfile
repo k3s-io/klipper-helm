@@ -6,7 +6,7 @@ RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
     else \
         ARCH="${TARGETARCH}" ; \
     fi && \
-    curl -sL https://get.helm.sh/helm-v3.18.3-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
+    curl -sL https://get.helm.sh/helm-v3.18.4-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 COPY entry /usr/bin/
 
 FROM golang:1.24-alpine3.22 AS plugins
