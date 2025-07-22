@@ -27,15 +27,16 @@ helm_update() {
 		exit
 	fi
 
-	# If a previous helm operation was interrupted unexpectedly, set it to failed.
-	if [[ "${STATUS}" =~ ^(pending-install|pending-upgrade|pending-rollback|uninstalling)$ ]]; then
+	# If a previous helm operation was interrupted unexpectedly or release state is corrupted, set it to failed.
+	if [[ "${STATUS}" =~ ^(pending-install|pending-upgrade|pending-rollback|superseded|uninstalling)$ ]]; then
 		echo Previous helm job was interrupted, updating status from ${STATUS} to failed
 		echo "Resetting ${HELM} release status from '${STATUS}' to 'failed'" >> ${TERM_LOG}
 		${HELM} set-status ${NAME} failed --namespace ${TARGET_NAMESPACE}
 
 		# Upgrades can be retried; install and rollback will be handled as failure below.
+		# If release state is superseded, chart deployment might be correct, try an upgrade first.
 		# If this upgrade also fails, retries of the job will handle that as failure due to the release state change.
-		if [[ "${STATUS}" == "pending-upgrade" ]]; then
+		if [[ "${STATUS}" =~ ^(pending-upgrade|superseded)$ ]]; then
 			echo "Retrying upgrade of ${HELM} chart" >> ${TERM_LOG}
 			echo "Retrying upgrade of ${NAME}"
 			shift 1
