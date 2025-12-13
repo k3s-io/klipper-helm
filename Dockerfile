@@ -6,7 +6,7 @@ RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
     else \
         ARCH="${TARGETARCH}" ; \
     fi && \
-    curl -sL https://get.helm.sh/helm-v3.19.3-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
+    curl -sL https://get.helm.sh/helm-v3.19.4-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 COPY entry /usr/bin/
 
 FROM golang:1.24-alpine3.22 AS plugins
@@ -16,13 +16,13 @@ RUN go version
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     curl -sL https://github.com/k3s-io/helm-set-status/archive/refs/tags/v0.3.0.tar.gz | tar xvzf - --strip-components=1 -C /go/src/github.com/k3s-io/helm-set-status && \
     cd /go/src/github.com/k3s-io/helm-set-status && \
-    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@v3.19.3 && \
+    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@v3.19.4 && \
     go mod tidy && \
     make install
 RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
     curl -sL https://github.com/helm/helm-mapkubeapis/archive/refs/tags/v0.6.1.tar.gz | tar xvzf - --strip-components=1 -C /go/src/github.com/helm/helm-mapkubeapis && \
     cd /go/src/github.com/helm/helm-mapkubeapis && \
-    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@v3.19.3 && \
+    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@v3.19.4 && \
     go mod tidy && \
     make && \
     mkdir -p /root/.local/share/helm/plugins/helm-mapkubeapis && \
