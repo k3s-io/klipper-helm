@@ -1,4 +1,4 @@
-FROM alpine:3.22 AS extract
+FROM alpine:3.23 AS extract
 RUN apk add -U curl ca-certificates
 ARG TARGETARCH
 RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
@@ -31,7 +31,7 @@ RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
            /go/src/github.com/helm/helm-mapkubeapis/config \
            /root/.local/share/helm/plugins/helm-mapkubeapis/
 
-FROM alpine:3.22
+FROM alpine:3.23
 ARG BUILDDATE
 LABEL buildDate=$BUILDDATE
 RUN apk --no-cache upgrade && \
