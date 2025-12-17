@@ -15,7 +15,7 @@ scms:
 
 sources:
   helmVersion:
-    name: "Get latest Helm 3.19.x release"
+    name: "Get latest Helm 3.x release"
     kind: "githubrelease"
     spec:
       owner: "helm"
@@ -23,7 +23,7 @@ sources:
       token: '{{ requiredEnv .github.token }}'
       versionfilter:
         kind: "semver"
-        pattern: "~3.19"
+        pattern: "^3"
 
 targets:
   updateDockerfileHelmDownload:
@@ -59,4 +59,4 @@ actions:
       description: |
         Automated update from updatecli.
         
-        This PR updates Helm to version {{ source "helmVersion" }} on the 3.19.x minor release branch.
+        This PR updates Helm to version {{ source "helmVersion" }} on the 3.x major release line.
