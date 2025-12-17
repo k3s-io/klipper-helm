@@ -43,8 +43,8 @@ targets:
     sourceid: "helmVersion"
     spec:
       file: "Dockerfile"
-      matchpattern: 'helm\.sh/helm/v3@v[0-9]+\.[0-9]+\.[0-9]+'
-      replacepattern: 'helm.sh/helm/v3@{{ source "helmVersion" }}'
+      matchpattern: 'helm\.sh/helm/v3=helm\.sh/helm/v3@v[0-9]+\.[0-9]+\.[0-9]+'
+      replacepattern: 'helm.sh/helm/v3=helm.sh/helm/v3@{{ source "helmVersion" }}'
 
 actions:
   github:
