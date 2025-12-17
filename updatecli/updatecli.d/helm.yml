@@ -34,7 +34,7 @@ targets:
     spec:
       file: "Dockerfile"
       matchpattern: 'helm-v[0-9]+\.[0-9]+\.[0-9]+-linux'
-      replacepattern: 'helm-v{{ source "helmVersion" }}-linux'
+      replacepattern: 'helm-{{ source "helmVersion" }}-linux'
   
   updateDockerfileHelmModules:
     name: "Update Helm version for go module replacements"
@@ -44,7 +44,7 @@ targets:
     spec:
       file: "Dockerfile"
       matchpattern: 'helm\.sh/helm/v3@v[0-9]+\.[0-9]+\.[0-9]+'
-      replacepattern: 'helm.sh/helm/v3@v{{ source "helmVersion" }}'
+      replacepattern: 'helm.sh/helm/v3@{{ source "helmVersion" }}'
 
 actions:
   github:
