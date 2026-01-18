@@ -10,7 +10,7 @@ RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
 COPY entry /usr/bin/
 
 FROM golang:1.24-alpine3.22 AS plugins
-RUN apk add -U curl ca-certificates build-base binutils-gold
+RUN apk add -U curl ca-certificates build-base
 COPY --from=extract /usr/bin/helm /usr/bin/helm
 RUN go version
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
