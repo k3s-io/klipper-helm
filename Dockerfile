@@ -1,6 +1,6 @@
 FROM alpine:3.23 AS extract
-RUN apk add -U curl ca-certificates
 ARG TARGETARCH
+RUN apk add -U curl ca-certificates
 RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
         ARCH="arm" ; \
     else \
@@ -9,11 +9,10 @@ RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
     curl -sL https://get.helm.sh/helm-v3.19.5-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 COPY entry /usr/bin/
 
-FROM golang:1.24-alpine3.23 AS plugins
-RUN apk add -U curl ca-certificates build-base
+FROM golang:1.25-alpine3.23 AS plugins
 ARG TARGETARCH
-RUN if [ "${TARGETARCH}" = "arm64" ]; then apk add -U binutils-gold ; fi
 COPY --from=extract /usr/bin/helm /usr/bin/helm
+RUN apk add -U curl ca-certificates build-base $([ "${TARGETARCH}" = "arm64" ] && echo binutils-gold)
 RUN go version
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     curl -sL https://github.com/k3s-io/helm-set-status/archive/refs/tags/v0.3.0.tar.gz | tar xvzf - --strip-components=1 -C /go/src/github.com/k3s-io/helm-set-status && \
