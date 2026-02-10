@@ -11,6 +11,8 @@ COPY entry /usr/bin/
 
 FROM golang:1.24-alpine3.23 AS plugins
 RUN apk add -U curl ca-certificates build-base
+ARG TARGETARCH
+RUN if [ "${TARGETARCH}" = "arm64" ]; then apk add -U binutils-gold ; fi
 COPY --from=extract /usr/bin/helm /usr/bin/helm
 RUN go version
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
