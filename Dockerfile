@@ -9,7 +9,7 @@ RUN if [ "${TARGETARCH}" = "arm/v7" ]; then \
     curl -sL https://get.helm.sh/helm-v3.19.5-linux-${ARCH}.tar.gz | tar xvzf - --strip-components=1 -C /usr/bin
 COPY entry /usr/bin/
 
-FROM golang:1.25-alpine3.23 AS plugins
+FROM golang:1.26-alpine3.23 AS plugins
 ARG TARGETARCH
 COPY --from=extract /usr/bin/helm /usr/bin/helm
 RUN apk add -U curl ca-certificates build-base $([ "${TARGETARCH}" = "arm64" ] && echo binutils-gold)
