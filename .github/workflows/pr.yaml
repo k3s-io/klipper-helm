@@ -11,6 +11,12 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - amd64
+          - riscv64
 
     permissions:
       contents: read
@@ -42,7 +48,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          platforms: linux/amd64
+          platforms: linux/${{ matrix.platform }}
           outputs: type=image,"name=${{ env.DOCKERHUB_REPO }},${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=false
 
   build-arm:
@@ -62,7 +68,7 @@ jobs:
         run: |
           platform=${{ matrix.platform }}
           echo "ARCH=${platform//\//-}" >> $GITHUB_ENV
-      
+
       - name: Set DOCKERHUB_REPO
         run: |
           if [ "${{ github.repository_owner }}" == "k3s-io" ]; then
