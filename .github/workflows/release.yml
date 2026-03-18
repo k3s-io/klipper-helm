@@ -16,6 +16,8 @@ jobs:
       contents: read
       packages: write
       id-token: write # needed for the Vault authentication
+      attestations: write # needed for actions/attest
+      artifact-metadata: write # needed to upload the attestations
 
     steps:
       - name: Set DOCKERHUB_REPO
@@ -77,6 +79,14 @@ jobs:
           platforms: linux/amd64
           outputs: type=image,"name=${{ env.DOCKERHUB_REPO }},${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=true
 
+      - name: Attest
+        uses: actions/attest@v4
+        id: attest
+        with:
+          subject-name: ${{ env.GHCR_REPO }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
       - name: Export digest
         run: |
           mkdir -p ${{ runner.temp }}/digests
@@ -104,6 +114,8 @@ jobs:
       contents: read
       packages: write
       id-token: write # needed for the Vault authentication
+      attestations: write
+      artifact-metadata: write
 
     steps:
       - name: Replace / with -
@@ -169,6 +181,14 @@ jobs:
         with:
           platforms: linux/${{ matrix.platform }}
           outputs: type=image,"name=${{ env.DOCKERHUB_REPO }},${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=true
+      
+      - name: Attest
+        uses: actions/attest@v4
+        id: attest
+        with:
+          subject-name: ${{ env.GHCR_REPO }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
       - name: Export digest
         run: |
@@ -194,6 +214,8 @@ jobs:
       contents: read
       packages: write
       id-token: write # needed for the Vault authentication
+      attestations: write # needed for actions/attest
+      artifact-metadata: write # needed to upload the attestations
 
     steps:
       - name: Download digests
@@ -253,12 +275,22 @@ jobs:
             ${{ env.GHCR_REPO }}
 
       - name: Create manifest list and push
+        id: get-digest
         working-directory: ${{ runner.temp }}/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.DOCKERHUB_REPO }}@sha256:%s ' *)
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_REPO }}@sha256:%s ' *)
+          GHCR_DIGEST=$(docker buildx imagetools inspect ${{ env.GHCR_REPO }}:${{ steps.meta.outputs.version }} --raw | sha256sum | awk '{print "sha256:"$1}')
+          echo "ghcr_digest=$GHCR_DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Attest multi-arch image (GHCR)
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ env.GHCR_REPO }}
+          subject-digest: ${{ steps.get-digest.outputs.ghcr_digest }}
+          push-to-registry: true
 
       - name: Inspect image
         run: |
