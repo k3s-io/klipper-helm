@@ -2,7 +2,7 @@
 
 helm_update() {
 	LINE="$(${HELM} ls --all -f "^${NAME}\$" --namespace ${TARGET_NAMESPACE} --output json | jq -r "${JQ_CMD}" | tr '[:upper:]' '[:lower:]')"
-	IFS=, read -r INSTALLED_VERSION STATUS _ <<<${LINE}
+	IFS=, read -r INSTALLED_VERSION STATUS REVISION _ <<<${LINE}
 	VALUES=""
 
 	for VALUES_FILE in /config/*.yaml; do
@@ -15,6 +15,9 @@ helm_update() {
 			echo "No ${HELM} chart installed; nothing to delete" >> ${TERM_LOG}
 			exit
 		fi
+
+    check_revision ${REVISION}
+
 		echo "Uninstalling ${HELM} chart" >> ${TERM_LOG}
 		${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait || true
 		exit
@@ -26,6 +29,8 @@ helm_update() {
 		${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
 		exit
 	fi
+
+  check_revision ${REVISION}
 
 	# If a previous helm operation was interrupted unexpectedly or release state is corrupted, set it to failed.
 	if [[ "${STATUS}" =~ ^(pending-install|pending-upgrade|pending-rollback|superseded|uninstalling)$ ]]; then
@@ -124,6 +129,15 @@ helm_content_decode() {
 	set +e
 }
 
+check_revision() {
+  REVISION="$1"
+  if [[ -n "${EXPECTED_RELEASE_REVISION}" ]] && [[ "${EXPECTED_RELEASE_REVISION}" != "${REVISION}" ]]; then
+    echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}" >> ${TERM_LOG}
+    echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}"
+    exit 64
+  fi
+}
+
 export CA_FILE=/config/ca-file.pem
 export CA_DIR=/ca-files
 export AUTH_DIR=/auth
@@ -138,7 +152,7 @@ INSECURE_TLS_ARG=""
 PLAIN_HTTP_ARG=""
 TIMEOUT_ARG=""
 PASS_CREDENTIALS_ARG=""
-JQ_CMD='"\(.[0].chart),\(.[0].status)"'
+JQ_CMD='"\(.[0].chart),\(.[0].status),\(.[0].revision)"'
 
 set -e -v
 if [[ ${KUBERNETES_SERVICE_HOST} =~ .*:.* ]]; then
