@@ -2,7 +2,7 @@ FROM alpine:3.23 AS extract
 ARG TARGETARCH
 RUN apk add -U curl ca-certificates
 RUN case "${TARGETARCH}" in \
-        arm/v7) ARCH="arm";   HELM_SHA256="758375df78fb8f91f4056244bda539710a73be79284b24b4bdad68384348ca33" ;; \
+        arm/v7|arm) ARCH="arm";   HELM_SHA256="758375df78fb8f91f4056244bda539710a73be79284b24b4bdad68384348ca33" ;; \
         arm64)  ARCH="arm64"; HELM_SHA256="56b9d1b0e0efbb739be6e68a37860ace8ec9c7d3e6424e3b55d4c459bc3a0401" ;; \
         amd64)  ARCH="amd64"; HELM_SHA256="0165ee4a2db012cc657381001e593e981f42aa5707acdd50658326790c9d0dc3" ;; \
         *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
