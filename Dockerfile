@@ -10,7 +10,7 @@ RUN case "${TARGETARCH}" in \
     cd /tmp && \
     curl -fsSL https://get.helm.sh/helm-v3.20.1-linux-${ARCH}.tar.gz -o helm.tar.gz && \
     echo "${HELM_SHA256}  helm.tar.gz" | sha256sum -c - && \
-    tar xzf helm.tar.gz --strip-components=1 -C /usr/bin && \
+    tar xzf helm.tar.gz --strip-components=1 -C /usr/bin linux-${ARCH}/helm && \
     rm -f /tmp/helm.tar.gz
 COPY entry /usr/bin/
 
