@@ -1,0 +1,62 @@
+---
+name: "Bump Helm version"
+
+scms:
+  klipper-helm:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ requiredEnv .github.username }}"
+      token: '{{ requiredEnv .github.token }}'
+      owner: "k3s-io"
+      repository: "klipper-helm"
+      branch: "master"
+
+sources:
+  helmVersion:
+    name: "Get latest Helm 3.x release"
+    kind: "githubrelease"
+    spec:
+      owner: "helm"
+      repository: "helm"
+      token: '{{ requiredEnv .github.token }}'
+      versionfilter:
+        kind: "semver"
+        pattern: "^3"
+
+targets:
+  updateDockerfileHelmDownload:
+    name: "Update Helm version in Dockerfile download URL"
+    kind: "file"
+    scmid: "klipper-helm"
+    sourceid: "helmVersion"
+    spec:
+      file: "Dockerfile"
+      matchpattern: 'helm-v[0-9]+\.[0-9]+\.[0-9]+-linux'
+      replacepattern: 'helm-{{ source "helmVersion" }}-linux'
+  
+  updateDockerfileHelmModules:
+    name: "Update Helm version for go module replacements"
+    kind: "file"
+    scmid: "klipper-helm"
+    sourceid: "helmVersion"
+    spec:
+      file: "Dockerfile"
+      matchpattern: 'helm\.sh/helm/v3=helm\.sh/helm/v3@v[0-9]+\.[0-9]+\.[0-9]+'
+      replacepattern: 'helm.sh/helm/v3=helm.sh/helm/v3@{{ source "helmVersion" }}'
+
+actions:
+  github:
+    kind: "github/pullrequest"
+    scmid: "klipper-helm"
+    spec:
+      automerge: false
+      draft: false
+      mergemethod: squash
+      parent: false
+      title: 'chore(deps): bump Helm to {{ source "helmVersion" }}'
+      description: |
+        Automated update from updatecli.
+        
+        This PR updates Helm to version {{ source "helmVersion" }} on the 3.x major release line.
