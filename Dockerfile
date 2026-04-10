@@ -14,7 +14,7 @@ RUN case "${TARGETARCH}" in \
     rm -f /tmp/helm.tar.gz
 COPY entry /usr/bin/
 
-FROM golang:1.25-alpine3.23 AS plugins
+FROM golang:1.26-alpine3.23 AS plugins
 ARG TARGETARCH
 COPY --from=extract /usr/bin/helm /usr/bin/helm
 RUN apk add -U curl ca-certificates build-base $([ "${TARGETARCH}" = "arm64" ] && echo binutils-gold)
