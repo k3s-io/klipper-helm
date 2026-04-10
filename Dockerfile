@@ -2,13 +2,13 @@ FROM alpine:3.23 AS extract
 ARG TARGETARCH
 RUN apk add -U curl ca-certificates
 RUN case "${TARGETARCH}" in \
-        arm/v7|arm) ARCH="arm";   HELM_SHA256="758375df78fb8f91f4056244bda539710a73be79284b24b4bdad68384348ca33" ;; \
-        arm64)  ARCH="arm64"; HELM_SHA256="56b9d1b0e0efbb739be6e68a37860ace8ec9c7d3e6424e3b55d4c459bc3a0401" ;; \
-        amd64)  ARCH="amd64"; HELM_SHA256="0165ee4a2db012cc657381001e593e981f42aa5707acdd50658326790c9d0dc3" ;; \
+        arm/v7|arm) ARCH="arm";   HELM_SHA256="a8a614c740399ff1ef32bcea6be6e4523f17e3376f9cf55c192cc48c8f2d1f19" ;; \
+        arm64)  ARCH="arm64"; HELM_SHA256="5ea2d6bc2cda3f8edf985e028809f5a9278f404fb8ab24044de9b7cb9b79a691" ;; \
+        amd64)  ARCH="amd64"; HELM_SHA256="258e830a9e613c8a7a302d6059b4bb3b9758f2f3e1bb8ea0d707ce10a9a72fea" ;; \
         *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
     esac && \
     cd /tmp && \
-    curl -fsSL https://get.helm.sh/helm-v3.20.1-linux-${ARCH}.tar.gz -o helm.tar.gz && \
+    curl -fsSL https://get.helm.sh/helm-v3.20.2-linux-${ARCH}.tar.gz -o helm.tar.gz && \
     echo "${HELM_SHA256}  helm.tar.gz" | sha256sum -c - && \
     tar xzf helm.tar.gz --strip-components=1 -C /usr/bin linux-${ARCH}/helm && \
     rm -f /tmp/helm.tar.gz
@@ -26,7 +26,7 @@ RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     tar xzf helm-set-status.tar.gz --strip-components=1 -C /go/src/github.com/k3s-io/helm-set-status && \
     rm -f /tmp/helm-set-status.tar.gz && \
     cd /go/src/github.com/k3s-io/helm-set-status && \
-    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@v3.20.1 && \
+    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@v3.20.2 && \
     go mod tidy && \
     make install
 RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
@@ -36,7 +36,7 @@ RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
     tar xzf helm-mapkubeapis.tar.gz --strip-components=1 -C /go/src/github.com/helm/helm-mapkubeapis && \
     rm -f /tmp/helm-mapkubeapis.tar.gz && \
     cd /go/src/github.com/helm/helm-mapkubeapis && \
-    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@v3.20.1 && \
+    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@v3.20.2 && \
     go mod tidy && \
     make && \
     mkdir -p /root/.local/share/helm/plugins/helm-mapkubeapis && \
