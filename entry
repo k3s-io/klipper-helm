@@ -134,9 +134,12 @@ check_revision() {
   if [[ -n "${EXPECTED_RELEASE_REVISION}" ]] && [[ "${EXPECTED_RELEASE_REVISION}" != "${REVISION}" ]]; then
     echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}" >> ${TERM_LOG}
     echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}"
-    exit 64
+    exit
   fi
 }
+
+# do not interrupt helm while it is running, or it will likely leave the release in a pending state
+trap "" SIGINT SIGTERM
 
 export CA_FILE=/config/ca-file.pem
 export CA_DIR=/ca-files
