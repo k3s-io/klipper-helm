@@ -49,7 +49,8 @@ FROM alpine:3.23
 ARG BUILDDATE
 LABEL buildDate=$BUILDDATE
 RUN apk --no-cache upgrade && \
-    apk add -U --no-cache ca-certificates jq bash && \
+    apk add -U --no-cache ca-certificates-bundle jq bash && \
+    apk del libcrypto3 libssl3 apk-tools zlib && \
     adduser -D -u 1000 -s /bin/bash klipper-helm
 WORKDIR /home/klipper-helm
 COPY --chown=1000:1000 --from=plugins /root/.local/share/helm/plugins/ /home/klipper-helm/.local/share/helm/plugins/
