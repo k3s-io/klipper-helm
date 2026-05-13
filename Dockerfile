@@ -41,7 +41,7 @@ RUN case "${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" in \
       -o /usr/bin/helm ./cmd/helm
 COPY entry /usr/bin/
 
-FROM golang:1.25-alpine3.23 AS plugins
+FROM golang:1.26-alpine3.23 AS plugins
 ARG TARGETARCH
 ARG HELM_VERSION
 COPY --from=extract /usr/bin/helm /usr/bin/helm
