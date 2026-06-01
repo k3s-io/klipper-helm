@@ -1,5 +1,5 @@
-ARG HELM_VERSION=v3.20.2
-ARG HELM_COMMIT=8fb76d6ab555577e98e23b7500009537a471feee
+ARG HELM_VERSION=v4.1.4
+ARG HELM_COMMIT=05fa37973dc9e42b76e1d2883494c87174b6074f
 
 FROM alpine/git:2.49.1 AS helm-src
 ARG HELM_VERSION
@@ -12,7 +12,7 @@ RUN git clone --branch "${HELM_VERSION}" --depth 1 https://github.com/helm/helm.
     fi && \
     printf '%s\n' "${GIT_COMMIT}" > /src/helm/.git-commit
 
-FROM golang:1.25-alpine3.23 AS extract
+FROM golang:1.25-alpine3.23 AS helm
 ARG TARGETARCH
 ARG TARGETVARIANT
 ARG HELM_VERSION
@@ -30,41 +30,39 @@ RUN case "${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" in \
     GIT_COMMIT="$(cat .git-commit)" && \
     CGO_ENABLED=0 go build -trimpath \
       -ldflags "-w -s \
-      -X helm.sh/helm/v3/internal/version.version=${HELM_VERSION} \
-      -X helm.sh/helm/v3/internal/version.metadata= \
-      -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT} \
-      -X helm.sh/helm/v3/internal/version.gitTreeState=clean \
-      -X helm.sh/helm/v3/pkg/lint/rules.k8sVersionMajor=$((K8S_MODULES_MAJOR_VER + 1)) \
-      -X helm.sh/helm/v3/pkg/lint/rules.k8sVersionMinor=${K8S_MODULES_MINOR_VER} \
-      -X helm.sh/helm/v3/pkg/chartutil.k8sVersionMajor=$((K8S_MODULES_MAJOR_VER + 1)) \
-      -X helm.sh/helm/v3/pkg/chartutil.k8sVersionMinor=${K8S_MODULES_MINOR_VER}" \
+      -X helm.sh/helm/v4/internal/version.version=${HELM_VERSION} \
+      -X helm.sh/helm/v4/internal/version.metadata= \
+      -X helm.sh/helm/v4/internal/version.gitCommit=${GIT_COMMIT} \
+      -X helm.sh/helm/v4/internal/version.gitTreeState=clean \
+      -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMajor=$((K8S_MODULES_MAJOR_VER + 1)) \
+      -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMinor=${K8S_MODULES_MINOR_VER} \
+      -X helm.sh/helm/v4/pkg/chartutil.k8sVersionMajor=$((K8S_MODULES_MAJOR_VER + 1)) \
+      -X helm.sh/helm/v4/pkg/chartutil.k8sVersionMinor=${K8S_MODULES_MINOR_VER}" \
       -o /usr/bin/helm ./cmd/helm
 COPY entry /usr/bin/
 
 FROM golang:1.25-alpine3.23 AS plugins
 ARG TARGETARCH
 ARG HELM_VERSION
-COPY --from=extract /usr/bin/helm /usr/bin/helm
+COPY --from=helm /usr/bin/helm /usr/bin/helm
 RUN apk add -U curl ca-certificates build-base $([ "${TARGETARCH}" = "arm64" ] && echo binutils-gold)
 RUN go version
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     cd /tmp && \
-    curl -fsSL https://github.com/k3s-io/helm-set-status/archive/refs/tags/v0.3.0.tar.gz -o helm-set-status.tar.gz && \
-    echo "56dfeabb802664b7c692607eafc823f784605181539070afaa369e62b4dfd0fb  helm-set-status.tar.gz" | sha256sum -c - && \
+    curl -fsSL https://github.com/k3s-io/helm-set-status/archive/3a3a40923262fcd0bdf729b538cda7dd4b15b047/helm-set-status.tar.gz -o helm-set-status.tar.gz && \
     tar xzf helm-set-status.tar.gz --strip-components=1 -C /go/src/github.com/k3s-io/helm-set-status && \
     rm -f /tmp/helm-set-status.tar.gz && \
     cd /go/src/github.com/k3s-io/helm-set-status && \
-    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@${HELM_VERSION} && \
+    go mod edit --replace helm.sh/helm/v4=helm.sh/helm/v4@"${HELM_VERSION}" && \
     go mod tidy && \
     make install
 RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
     cd /tmp && \
-    curl -fsSL https://github.com/helm/helm-mapkubeapis/archive/refs/tags/v0.6.1.tar.gz -o helm-mapkubeapis.tar.gz && \
-    echo "261f4adb3a09a5b7c06a32464057c6f93c8fbde9c5776bd07b17fdcaad18ec02  helm-mapkubeapis.tar.gz" | sha256sum -c - && \
+    curl -fsSL https://github.com/helm/helm-mapkubeapis/archive/a8a487a350db0ca85fb4247afb7e220d5f254b6f/helm-mapkubeapis.tar.gz -o helm-mapkubeapis.tar.gz && \
     tar xzf helm-mapkubeapis.tar.gz --strip-components=1 -C /go/src/github.com/helm/helm-mapkubeapis && \
     rm -f /tmp/helm-mapkubeapis.tar.gz && \
     cd /go/src/github.com/helm/helm-mapkubeapis && \
-    go mod edit --replace helm.sh/helm/v3=helm.sh/helm/v3@${HELM_VERSION} && \
+    go mod edit --replace helm.sh/helm/v4=helm.sh/helm/v4@"${HELM_VERSION}" && \
     go mod tidy && \
     make && \
     mkdir -p /root/.local/share/helm/plugins/helm-mapkubeapis && \
@@ -82,7 +80,7 @@ RUN apk --no-cache upgrade && \
     adduser -D -u 1000 -s /bin/bash klipper-helm
 WORKDIR /home/klipper-helm
 COPY --chown=1000:1000 --from=plugins /root/.local/share/helm/plugins/ /home/klipper-helm/.local/share/helm/plugins/
-COPY --from=extract /usr/bin/helm /usr/bin/entry /usr/bin/
+COPY --from=helm /usr/bin/helm /usr/bin/entry /usr/bin/
 ENTRYPOINT ["entry"]
 ENV STABLE_REPO_URL=https://charts.helm.sh/stable/
 ENV TIMEOUT=
