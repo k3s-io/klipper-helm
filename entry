@@ -1,7 +1,7 @@
 #!/bin/bash
 
 helm_update() {
-	LINE="$(${HELM} ls --all -f "^${NAME}\$" --namespace ${TARGET_NAMESPACE} --output json | jq -r "${JQ_CMD}" | tr '[:upper:]' '[:lower:]')"
+	LINE="$(${HELM} ls -f "^${NAME}\$" --namespace ${TARGET_NAMESPACE} --output json | jq -r "${JQ_CMD}" | tr '[:upper:]' '[:lower:]')"
 	IFS=, read -r INSTALLED_VERSION STATUS REVISION _ <<<${LINE}
 	VALUES=""
 
