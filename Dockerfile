@@ -1,5 +1,6 @@
 ARG HELM_VERSION=v4.1.4
 ARG HELM_COMMIT=05fa37973dc9e42b76e1d2883494c87174b6074f
+ARG CONTAINERD_VERSION=v2.3.1-k3s2
 
 FROM alpine/git:2.49.1 AS helm-src
 ARG HELM_VERSION
@@ -44,6 +45,7 @@ COPY entry /usr/bin/
 FROM golang:1.25-alpine3.23 AS plugins
 ARG TARGETARCH
 ARG HELM_VERSION
+ARG CONTAINERD_VERSION
 COPY --from=helm /usr/bin/helm /usr/bin/helm
 RUN apk add -U curl ca-certificates build-base $([ "${TARGETARCH}" = "arm64" ] && echo binutils-gold)
 RUN go version
@@ -54,6 +56,7 @@ RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     rm -f /tmp/helm-set-status.tar.gz && \
     cd /go/src/github.com/k3s-io/helm-set-status && \
     go mod edit --replace helm.sh/helm/v4=helm.sh/helm/v4@"${HELM_VERSION}" && \
+    go mod edit --replace github.com/containerd/containerd/v2=github.com/k3s-io/containerd/v2@"${CONTAINERD_VERSION}" && \
     go mod tidy && \
     make install
 RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
@@ -63,6 +66,7 @@ RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
     rm -f /tmp/helm-mapkubeapis.tar.gz && \
     cd /go/src/github.com/helm/helm-mapkubeapis && \
     go mod edit --replace helm.sh/helm/v4=helm.sh/helm/v4@"${HELM_VERSION}" && \
+    go mod edit --replace github.com/containerd/containerd/v2=github.com/k3s-io/containerd/v2@"${CONTAINERD_VERSION}" && \
     go mod tidy && \
     make && \
     mkdir -p /root/.local/share/helm/plugins/helm-mapkubeapis && \
