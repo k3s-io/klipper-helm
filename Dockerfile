@@ -1,5 +1,7 @@
 ARG HELM_VERSION=v4.1.4
 ARG HELM_COMMIT=05fa37973dc9e42b76e1d2883494c87174b6074f
+ARG HELM_SET_STATUS_COMMIT=3a3a40923262fcd0bdf729b538cda7dd4b15b047
+ARG HELM_MAPKUBEAPIS_COMMIT=a8a487a350db0ca85fb4247afb7e220d5f254b6f
 
 FROM alpine/git:2.49.1 AS helm-src
 ARG HELM_VERSION
@@ -11,6 +13,30 @@ RUN git clone --branch "${HELM_VERSION}" --depth 1 https://github.com/helm/helm.
         exit 1; \
     fi && \
     printf '%s\n' "${GIT_COMMIT}" > /src/helm/.git-commit
+
+FROM alpine/git:2.49.1 AS helm-set-status-src
+ARG HELM_SET_STATUS_COMMIT
+RUN git init /src/helm-set-status && \
+    cd /src/helm-set-status && \
+    git remote add origin https://github.com/k3s-io/helm-set-status.git && \
+    git fetch --depth 1 origin "${HELM_SET_STATUS_COMMIT}" && \
+    git checkout --detach FETCH_HEAD && \
+    if [ "$(git rev-parse HEAD)" != "${HELM_SET_STATUS_COMMIT}" ]; then \
+        echo "Resolved helm-set-status commit $(git rev-parse HEAD) does not match expected ${HELM_SET_STATUS_COMMIT}"; \
+        exit 1; \
+    fi
+
+FROM alpine/git:2.49.1 AS helm-mapkubeapis-src
+ARG HELM_MAPKUBEAPIS_COMMIT
+RUN git init /src/helm-mapkubeapis && \
+    cd /src/helm-mapkubeapis && \
+    git remote add origin https://github.com/helm/helm-mapkubeapis.git && \
+    git fetch --depth 1 origin "${HELM_MAPKUBEAPIS_COMMIT}" && \
+    git checkout --detach FETCH_HEAD && \
+    if [ "$(git rev-parse HEAD)" != "${HELM_MAPKUBEAPIS_COMMIT}" ]; then \
+        echo "Resolved helm-mapkubeapis commit $(git rev-parse HEAD) does not match expected ${HELM_MAPKUBEAPIS_COMMIT}"; \
+        exit 1; \
+    fi
 
 FROM golang:1.25-alpine3.23 AS helm
 ARG TARGETARCH
@@ -45,23 +71,15 @@ FROM golang:1.25-alpine3.23 AS plugins
 ARG TARGETARCH
 ARG HELM_VERSION
 COPY --from=helm /usr/bin/helm /usr/bin/helm
-RUN apk add -U curl ca-certificates build-base $([ "${TARGETARCH}" = "arm64" ] && echo binutils-gold)
+COPY --from=helm-set-status-src /src/helm-set-status /go/src/github.com/k3s-io/helm-set-status
+COPY --from=helm-mapkubeapis-src /src/helm-mapkubeapis /go/src/github.com/helm/helm-mapkubeapis
+RUN apk add -U ca-certificates build-base $([ "${TARGETARCH}" = "arm64" ] && echo binutils-gold)
 RUN go version
-RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
-    cd /tmp && \
-    curl -fsSL https://github.com/k3s-io/helm-set-status/archive/3a3a40923262fcd0bdf729b538cda7dd4b15b047/helm-set-status.tar.gz -o helm-set-status.tar.gz && \
-    tar xzf helm-set-status.tar.gz --strip-components=1 -C /go/src/github.com/k3s-io/helm-set-status && \
-    rm -f /tmp/helm-set-status.tar.gz && \
-    cd /go/src/github.com/k3s-io/helm-set-status && \
+RUN cd /go/src/github.com/k3s-io/helm-set-status && \
     go mod edit --replace helm.sh/helm/v4=helm.sh/helm/v4@"${HELM_VERSION}" && \
     go mod tidy && \
     make install
-RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
-    cd /tmp && \
-    curl -fsSL https://github.com/helm/helm-mapkubeapis/archive/a8a487a350db0ca85fb4247afb7e220d5f254b6f/helm-mapkubeapis.tar.gz -o helm-mapkubeapis.tar.gz && \
-    tar xzf helm-mapkubeapis.tar.gz --strip-components=1 -C /go/src/github.com/helm/helm-mapkubeapis && \
-    rm -f /tmp/helm-mapkubeapis.tar.gz && \
-    cd /go/src/github.com/helm/helm-mapkubeapis && \
+RUN cd /go/src/github.com/helm/helm-mapkubeapis && \
     go mod edit --replace helm.sh/helm/v4=helm.sh/helm/v4@"${HELM_VERSION}" && \
     go mod tidy && \
     make && \
