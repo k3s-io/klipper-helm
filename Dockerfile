@@ -1,10 +1,11 @@
 ARG HELM_VERSION=v4.1.4
 ARG HELM_COMMIT=05fa37973dc9e42b76e1d2883494c87174b6074f
 
-FROM alpine/git:2.49.1 AS helm-src
+FROM alpine:3.23 AS helm-src
 ARG HELM_VERSION
 ARG HELM_COMMIT
-RUN git clone --branch "${HELM_VERSION}" --depth 1 https://github.com/helm/helm.git /src/helm && \
+RUN apk add --no-cache git && \
+    git clone --branch "${HELM_VERSION}" --depth 1 https://github.com/helm/helm.git /src/helm && \
     GIT_COMMIT="$(git -C /src/helm rev-parse HEAD)" && \
     if [ "${GIT_COMMIT}" != "${HELM_COMMIT}" ]; then \
         echo "Resolved Helm commit ${GIT_COMMIT} does not match expected ${HELM_COMMIT} for ${HELM_VERSION}"; \
@@ -21,6 +22,7 @@ RUN case "${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" in \
         arm/v7|arm) export GOARCH="arm" GOARM="7" ;; \
         arm64)      export GOARCH="arm64" ;; \
         amd64)      export GOARCH="amd64" ;; \
+        riscv64)    export GOARCH="riscv64" ;; \
         *) echo "Unsupported architecture: ${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" && exit 1 ;; \
     esac && \
     cd /src/helm && \
