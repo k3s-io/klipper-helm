@@ -57,7 +57,7 @@ jobs:
           push: false
   
   build-riscv-arm:
-    if: repository_owner == 'k3s-io'
+    if: github.repository_owner == 'k3s-io'
     runs-on: cncf-ubuntu-16-64-arm
 
     strategy:
@@ -83,7 +83,7 @@ jobs:
           push: false
   
   build-riscv-amd:
-    if: repository_owner == 'k3s-io'
+    if: github.repository_owner == 'k3s-io'
     runs-on: cncf-ubuntu-16-64-x86
 
     strategy:
