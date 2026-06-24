@@ -5,33 +5,13 @@ on:
     paths-ignore:
       - "**.md"
 
-env:
-  GHCR_REPO: ghcr.io/${{ github.repository_owner }}/klipper-helm
+permissions:
+  contents: read
 
 jobs:
-  build:
+  build-amd64:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
     steps:
-      - name: Set DOCKERHUB_REPO
-        run: |
-          if [ "${{ github.repository_owner }}" == "k3s-io" ]; then
-            echo "DOCKERHUB_REPO=rancher/klipper-helm" >> $GITHUB_ENV
-          else
-            echo "DOCKERHUB_REPO=${{ secrets.DOCKER_USERNAME }}/klipper-helm" >> $GITHUB_ENV
-          fi
-
-      - name: Docker source meta
-        id: meta
-        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
-        with:
-          images: |
-            ${{ env.DOCKERHUB_REPO }}
-            ${{ env.GHCR_REPO }}
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
 
@@ -39,45 +19,38 @@ jobs:
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
       - name: Build Image
-        id: build
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         with:
           platforms: linux/amd64
-          outputs: type=image,"name=${{ env.DOCKERHUB_REPO }},${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=false
+          push: false
+  build-riscv:
+    if: github.repository_owner == 'k3s-io'
+    runs-on: cncf-ubuntu-16-64-x86
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+
+      - name: Build Image
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        with:
+          platforms: linux/riscv64
+          push: false
   build-arm:
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
         platform:
           - arm64
           - arm/v7
-
-    permissions:
-      contents: read
-
     steps:
       - name: Replace / with -
         run: |
           platform=${{ matrix.platform }}
           echo "ARCH=${platform//\//-}" >> $GITHUB_ENV
-      
-      - name: Set DOCKERHUB_REPO
-        run: |
-          if [ "${{ github.repository_owner }}" == "k3s-io" ]; then
-            echo "DOCKERHUB_REPO=rancher/klipper-helm" >> $GITHUB_ENV
-          else
-            echo "DOCKERHUB_REPO=${{ secrets.DOCKER_USERNAME }}/klipper-helm" >> $GITHUB_ENV
-          fi
-
-      - name: Docker source meta
-        id: meta
-        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
-        with:
-          images: |
-            ${{ env.DOCKERHUB_REPO }}
-            ${{ env.GHCR_REPO }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
@@ -86,8 +59,7 @@ jobs:
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
       - name: Build Image
-        id: build
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         with:
           platforms: linux/${{ matrix.platform }}
-          outputs: type=image,"name=${{ env.DOCKERHUB_REPO }},${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=false
+          push: false

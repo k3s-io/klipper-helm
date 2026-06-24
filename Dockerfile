@@ -1,9 +1,10 @@
 ARG HELM_VERSION=v4.1.4
 ARG HELM_COMMIT=05fa37973dc9e42b76e1d2883494c87174b6074f
 
-FROM alpine/git:2.49.1 AS helm-src
+FROM alpine:3.24 AS helm-src
 ARG HELM_VERSION
 ARG HELM_COMMIT
+RUN apk add --no-cache git
 RUN git clone --branch "${HELM_VERSION}" --depth 1 https://github.com/helm/helm.git /src/helm && \
     GIT_COMMIT="$(git -C /src/helm rev-parse HEAD)" && \
     if [ "${GIT_COMMIT}" != "${HELM_COMMIT}" ]; then \
@@ -12,7 +13,7 @@ RUN git clone --branch "${HELM_VERSION}" --depth 1 https://github.com/helm/helm.
     fi && \
     printf '%s\n' "${GIT_COMMIT}" > /src/helm/.git-commit
 
-FROM golang:1.25-alpine3.23 AS helm
+FROM golang:1.25-alpine3.24 AS helm
 ARG TARGETARCH
 ARG TARGETVARIANT
 ARG HELM_VERSION
@@ -21,6 +22,7 @@ RUN case "${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" in \
         arm/v7|arm) export GOARCH="arm" GOARM="7" ;; \
         arm64)      export GOARCH="arm64" ;; \
         amd64)      export GOARCH="amd64" ;; \
+        riscv64)    export GOARCH="riscv64" ;; \
         *) echo "Unsupported architecture: ${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" && exit 1 ;; \
     esac && \
     cd /src/helm && \
@@ -41,7 +43,7 @@ RUN case "${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" in \
       -o /usr/bin/helm ./cmd/helm
 COPY entry /usr/bin/
 
-FROM golang:1.25-alpine3.23 AS plugins
+FROM golang:1.25-alpine3.24 AS plugins
 ARG TARGETARCH
 ARG HELM_VERSION
 COPY --from=helm /usr/bin/helm /usr/bin/helm
@@ -71,7 +73,7 @@ RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
            /go/src/github.com/helm/helm-mapkubeapis/config \
            /root/.local/share/helm/plugins/helm-mapkubeapis/
 
-FROM alpine:3.23
+FROM alpine:3.24
 ARG BUILDDATE
 LABEL buildDate=$BUILDDATE
 RUN apk --no-cache upgrade && \

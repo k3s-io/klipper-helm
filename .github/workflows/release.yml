@@ -9,7 +9,7 @@ env:
   GHCR_REPO: ghcr.io/${{ github.repository_owner }}/klipper-helm
 
 jobs:
-  build:
+  build-amd64:
     runs-on: ubuntu-latest
 
     permissions:
@@ -101,8 +101,103 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  build-riscv64:
+    if: github.repository_owner == 'k3s-io'
+    # riscv64 emulation is incredibly slow on native GHA runners (10x slower).
+    # We brute force the problem with a larger CNCF runner.
+    # Testing between larger arm and x86 runners showed that x86 was 2x faster than arm.
+    runs-on: cncf-ubuntu-16-64-x86 
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # needed for the Vault authentication
+      attestations: write # needed for actions/attest
+      artifact-metadata: write # needed to upload the attestations
+
+    steps:
+      - name: Set DOCKERHUB_REPO
+        run: |
+          if [ "${{ github.repository_owner }}" == "k3s-io" ]; then
+            echo "DOCKERHUB_REPO=rancher/klipper-helm" >> $GITHUB_ENV
+          else
+            echo "DOCKERHUB_REPO=${{ secrets.DOCKER_USERNAME }}/klipper-helm" >> $GITHUB_ENV
+          fi
+
+      - name: Docker source meta
+        id: meta
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
+        with:
+          images: |
+            ${{ env.DOCKERHUB_REPO }}
+            ${{ env.GHCR_REPO }}
+
+      - name: "Read Vault secrets"
+        if: github.repository_owner == 'k3s-io'
+        uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
+        with:
+          secrets: |
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials username | DOCKER_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials password | DOCKER_TOKEN ;
+    
+      - name: Login to DockerHub with Rancher Secrets
+        if: github.repository_owner == 'k3s-io'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_TOKEN }}
+
+      # For forks, setup DockerHub login with GHA secrets
+      - name: Login to DockerHub with GHA Secrets
+        if: github.repository_owner != 'k3s-io'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        with:
+          platforms: linux/riscv64
+          outputs: type=image,"name=${{ env.DOCKERHUB_REPO }},${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=true
+
+      - name: Attest
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4
+        id: attest
+        with:
+          subject-name: ${{ env.GHCR_REPO }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        with:
+          name: digests-riscv64
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
   build-arm:
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -207,7 +302,8 @@ jobs:
   merge-manifests:
     runs-on: ubuntu-latest
     needs:
-      - build
+      - build-amd64
+      - build-riscv64
       - build-arm
 
     permissions:
