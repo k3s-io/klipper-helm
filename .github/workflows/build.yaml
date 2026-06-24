@@ -56,35 +56,9 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           push: false
   
-  build-riscv-arm:
-    if: github.repository_owner == 'k3s-io'
-    runs-on: cncf-ubuntu-16-64-arm
-
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - riscv64
-
-    permissions:
-      contents: read
-
-    steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build image
-        uses: docker/build-push-action@v7
-        with:
-          platforms: linux/${{ matrix.platform }}
-          push: false
-  
   build-riscv-amd:
     if: github.repository_owner == 'k3s-io'
-    runs-on: cncf-ubuntu-16-64-x86
+    runs-on: cncf-ubuntu-24-96-x86
 
     strategy:
       fail-fast: false
