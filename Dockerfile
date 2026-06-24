@@ -51,7 +51,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG HELM_VERSION
 COPY --from=helm /usr/bin/helm /usr/bin/helm
-RUN apk add -U --no-cache curl ca-certificates make git $([ "${TARGETARCH}" = "arm64" ] && echo binutils-gold)
+RUN apk add -U --no-cache curl ca-certificates make git
 RUN go version
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     cd /tmp && \
