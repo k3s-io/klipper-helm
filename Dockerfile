@@ -13,7 +13,7 @@ RUN git clone --branch "${HELM_VERSION}" --depth 1 https://github.com/helm/helm.
     fi && \
     printf '%s\n' "${GIT_COMMIT}" > /src/helm/.git-commit
 
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine3.24 AS helm
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine3.24 AS helm
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
@@ -52,7 +52,7 @@ RUN case "${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" in \
         -o /usr/bin/helm ./cmd/helm
 COPY entry /usr/bin/
 
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine3.24 AS plugins
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine3.24 AS plugins
 ARG TARGETPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
