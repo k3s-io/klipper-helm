@@ -20,6 +20,13 @@ ARG TARGETVARIANT
 ARG TARGETPLATFORM
 ARG HELM_VERSION
 COPY --from=helm-src /src/helm /src/helm
+# Apply tracked go.mod CVE overrides on top of the upstream Helm module before
+# building. See go-mod-overrides / scripts/go-mod-overrides.sh.
+COPY scripts/go-mod-overrides.sh /usr/local/bin/go-mod-overrides.sh
+COPY go-mod-overrides /src/helm/go-mod-overrides
+RUN chmod +x /usr/local/bin/go-mod-overrides.sh && \
+    cd /src/helm && \
+    go-mod-overrides.sh ./go-mod-overrides
 RUN case "${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" in \
         arm/v7|arm) export GOARCH="arm" GOARM="7" ;; \
         arm64)      export GOARCH="arm64" ;; \
