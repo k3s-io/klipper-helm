@@ -23,10 +23,10 @@ COPY --from=helm-src /src/helm /src/helm
 # Apply tracked go.mod CVE overrides on top of the upstream Helm module before
 # building. See go-mod-overrides / scripts/go-mod-overrides.sh.
 COPY scripts/go-mod-overrides.sh /usr/local/bin/go-mod-overrides.sh
-COPY go-mod-overrides /src/helm/go-mod-overrides
+COPY go-mod-overrides /src/go-mod-overrides
 RUN chmod +x /usr/local/bin/go-mod-overrides.sh && \
     cd /src/helm && \
-    go-mod-overrides.sh ./go-mod-overrides
+    go-mod-overrides.sh /src/go-mod-overrides
 RUN case "${TARGETARCH}${TARGETVARIANT:+/${TARGETVARIANT}}" in \
         arm/v7|arm) export GOARCH="arm" GOARM="7" ;; \
         arm64)      export GOARCH="arm64" ;; \
@@ -63,7 +63,7 @@ RUN go version
 # The plugins are built from their own upstream modules, so apply the same
 # tracked go.mod CVE overrides to each before building.
 COPY scripts/go-mod-overrides.sh /usr/local/bin/go-mod-overrides.sh
-COPY go-mod-overrides /go-mod-overrides
+COPY go-mod-overrides /src/go-mod-overrides
 RUN chmod +x /usr/local/bin/go-mod-overrides.sh
 RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     cd /tmp && \
@@ -72,7 +72,7 @@ RUN mkdir -p /go/src/github.com/k3s-io/helm-set-status && \
     rm -f /tmp/helm-set-status.tar.gz && \
     cd /go/src/github.com/k3s-io/helm-set-status && \
     go mod edit --replace helm.sh/helm/v4=helm.sh/helm/v4@"${HELM_VERSION}" && \
-    go-mod-overrides.sh /go-mod-overrides && \
+    go-mod-overrides.sh /src/go-mod-overrides && \
     make CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" HELM_PLUGIN_PATH=/root/.local/share/helm/plugins/helm-set-status install
 RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
     cd /tmp && \
@@ -81,7 +81,7 @@ RUN mkdir -p /go/src/github.com/helm/helm-mapkubeapis && \
     rm -f /tmp/helm-mapkubeapis.tar.gz && \
     cd /go/src/github.com/helm/helm-mapkubeapis && \
     go mod edit --replace helm.sh/helm/v4=helm.sh/helm/v4@"${HELM_VERSION}" && \
-    go-mod-overrides.sh /go-mod-overrides && \
+    go-mod-overrides.sh /src/go-mod-overrides && \
     make CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" build && \
     mkdir -p /root/.local/share/helm/plugins/helm-mapkubeapis && \
     cp -vr /go/src/github.com/helm/helm-mapkubeapis/plugin.yaml \

@@ -1,6 +1,6 @@
 #!/bin/sh
 # go-mod-overrides.sh — apply tracked go.mod overrides on top of an upstream
-# module so Rancher images stay CVE-free even when upstream has not yet bumped.
+# module so the built image stays CVE-free even when upstream has not yet bumped.
 #
 # The overrides file is a simple line-oriented list where each non-comment line
 # is passed verbatim to `go mod edit`. That keeps this a thin, dependency-free

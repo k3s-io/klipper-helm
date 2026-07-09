@@ -1,10 +1,4 @@
-# go-mod-overrides
-#
-# Tracks go.mod overrides applied on top of the upstream Helm module at build
-# time so the klipper-helm image stays CVE-free even when upstream Helm has not
-# yet bumped the affected dependency. Each non-comment line is passed verbatim to
-# `go mod edit` by scripts/go-mod-overrides.sh. Reference a CVE/advisory per entry
-# so we know when it can be dropped (i.e. once upstream Helm catches up).
+# go.mod overrides applied at build time. See scripts/go-mod-overrides.sh.
 
 # golang.org/x/net: CVE-2026-33814 (net/http2 DoS), CVE-2026-39821 (x/net/idna punycode).
 # Drop once upstream Helm requires golang.org/x/net >= v0.55.0.
