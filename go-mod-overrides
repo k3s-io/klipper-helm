@@ -1,0 +1,5 @@
+# go.mod overrides applied at build time. See scripts/go-mod-overrides.sh.
+
+# golang.org/x/net: CVE-2026-33814 (net/http2 DoS), CVE-2026-39821 (x/net/idna punycode).
+# Drop once upstream Helm requires golang.org/x/net >= v0.55.0.
+-replace golang.org/x/net=golang.org/x/net@v0.55.0
