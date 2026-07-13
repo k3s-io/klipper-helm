@@ -1,7 +1,7 @@
 #!/bin/bash
 
 helm_update() {
-	LINE="$(${HELM} ls -f "^${NAME}\$" --namespace ${TARGET_NAMESPACE} --output json | jq -r "${JQ_CMD}" | tr '[:upper:]' '[:lower:]')"
+	LINE="$(${HELM} ls -f "^${NAME}\$" --namespace ${TARGET_NAMESPACE} --output json | jq -r "${JQ_RELEASE_EXPRESSION}" | tr '[:upper:]' '[:lower:]')"
 	IFS=, read -r INSTALLED_VERSION STATUS REVISION _ <<<${LINE}
 	VALUES=""
 
@@ -26,7 +26,7 @@ helm_update() {
 	# No current version and status, safe to install
 	if [[ "${INSTALLED_VERSION}" =~ ^(|null)$ ]] && [[ "${STATUS}" =~ ^(|null)$ ]]; then
 		echo "Installing ${HELM} chart" >> ${TERM_LOG}
-		${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
+		${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
 		exit
 	fi
 
@@ -45,7 +45,7 @@ helm_update() {
 			echo "Retrying upgrade of ${HELM} chart" >> ${TERM_LOG}
 			echo "Retrying upgrade of ${NAME}"
 			shift 1
-			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
+			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
 			exit
 		else
 			STATUS=failed
@@ -60,7 +60,7 @@ helm_update() {
 		echo "Upgrading ${HELM} chart" >> ${TERM_LOG}
 		echo "Upgrading ${NAME}"
 		shift 1
-		${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
+		${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
 		exit
 	fi
 
@@ -72,7 +72,7 @@ helm_update() {
 			echo Deleted
 			# Try installing now that we've uninstalled
 			echo "Installing ${HELM} chart" >> ${TERM_LOG}
-			${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
+			${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
 			exit
 		else
 			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention" >> ${TERM_LOG}
@@ -83,7 +83,7 @@ helm_update() {
 
 	# No special status handling necessary, do whatever we were asked to do
 	echo "Installing ${HELM} chart" >> ${TERM_LOG}
-	${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${VALUES}
+	${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
 }
 
 helm_repo_init() {
@@ -155,7 +155,9 @@ INSECURE_TLS_ARG=""
 PLAIN_HTTP_ARG=""
 TIMEOUT_ARG=""
 PASS_CREDENTIALS_ARG=""
-JQ_CMD='"\(.[0].chart),\(.[0].status),\(.[0].revision)"'
+LABELS_ARG=""
+CONFIG_HASH_KEY="helmcharts.helm.cattle.io/configHash"
+JQ_RELEASE_EXPRESSION='first|(.chart,.status,.revision)'
 
 set -e -v
 if [[ ${KUBERNETES_SERVICE_HOST} =~ .*:.* ]]; then
@@ -199,6 +201,10 @@ fi
 
 if [[ -n "${TIMEOUT}" ]]; then
 	TIMEOUT_ARG="--timeout ${TIMEOUT}"
+fi
+
+if [[ -n "${CONFIG_HASH}" ]]; then
+  LABELS_ARG="--labels ${CONFIG_HASH_KEY}=${CONFIG_HASH}"
 fi
 
 helm_content_decode
