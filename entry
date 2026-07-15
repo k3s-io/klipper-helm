@@ -2,7 +2,7 @@
 
 helm_update() {
 	LINE="$(${HELM} ls -f "^${NAME}\$" --namespace ${TARGET_NAMESPACE} --output json | jq -r "${JQ_RELEASE_EXPRESSION}" | tr '[:upper:]' '[:lower:]')"
-	IFS=, read -r INSTALLED_VERSION STATUS REVISION _ <<<${LINE}
+	read -r INSTALLED_VERSION STATUS REVISION _ <<<${LINE}
 	VALUES=""
 
 	for VALUES_FILE in /config/*.yaml; do
@@ -157,7 +157,7 @@ TIMEOUT_ARG=""
 PASS_CREDENTIALS_ARG=""
 LABELS_ARG=""
 CONFIG_HASH_KEY="helmcharts.helm.cattle.io/configHash"
-JQ_RELEASE_EXPRESSION='first|(.chart,.status,.revision)'
+JQ_RELEASE_EXPRESSION='first|[.chart,.status,.revision]|@tsv'
 
 set -e -v
 if [[ ${KUBERNETES_SERVICE_HOST} =~ .*:.* ]]; then
