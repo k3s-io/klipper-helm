@@ -16,7 +16,7 @@ helm_update() {
 			exit
 		fi
 
-    check_revision ${REVISION}
+		check_revision ${REVISION}
 
 		echo "Uninstalling ${HELM} chart" >> ${TERM_LOG}
 		${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait || true
@@ -30,7 +30,7 @@ helm_update() {
 		exit
 	fi
 
-  check_revision ${REVISION}
+	check_revision ${REVISION}
 
 	# If a previous helm operation was interrupted unexpectedly or release state is corrupted, set it to failed.
 	if [[ "${STATUS}" =~ ^(pending-install|pending-upgrade|pending-rollback|superseded|uninstalling)$ ]]; then
@@ -64,9 +64,15 @@ helm_update() {
 		exit
 	fi
 
-	# The chart is in a bad state; try uninstalling it first
 	if [[ "${STATUS}" =~ ^(deleted|failed|null|unknown)$ ]]; then
-		if [[ "${FAILURE_POLICY:-reinstall}" == "reinstall" ]]; then
+		case "${FAILURE_POLICY:-reinstall}" in
+		"abort")
+			# The chart is in a bad state; try uninstalling it first
+			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}'; waiting for operator intervention" >> ${TERM_LOG}
+			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}'; waiting for operator intervention"
+			exit 1
+			;;
+		"reinstall")
 			echo "Uninstalling ${STATUS} ${HELM} chart" >> ${TERM_LOG}
 			${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait
 			echo Deleted
@@ -74,11 +80,20 @@ helm_update() {
 			echo "Installing ${HELM} chart" >> ${TERM_LOG}
 			${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
 			exit
-		else
-			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention" >> ${TERM_LOG}
-			echo "Release status is '${STATUS}' and failure policy is '${FAILURE_POLICY}', not 'reinstall'; waiting for operator intervention"
+			;;
+		"retry")
+			# Try upgrading again, in hope that the failure has been resolved
+			echo "Upgrading ${NAME} from failed state" >> ${TERM_LOG}
+			shift 1
+			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
+			exit 0
+			;;
+		*)
+			echo "Unknown failure policy '${FAILURE_POLICY}'" >> ${TERM_LOG}
+			echo "Unknown failure policy '${FAILURE_POLICY}'"
 			exit 1
-		fi
+			;;
+		esac
 	fi
 
 	# No special status handling necessary, do whatever we were asked to do
@@ -130,12 +145,12 @@ helm_content_decode() {
 }
 
 check_revision() {
-  REVISION="$1"
-  if [[ -n "${EXPECTED_RELEASE_REVISION}" ]] && [[ "${EXPECTED_RELEASE_REVISION}" != "${REVISION}" ]]; then
-    echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}" >> ${TERM_LOG}
-    echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}"
-    exit
-  fi
+	REVISION="$1"
+	if [[ -n "${EXPECTED_RELEASE_REVISION}" ]] && [[ "${EXPECTED_RELEASE_REVISION}" != "${REVISION}" ]]; then
+		echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}" >> ${TERM_LOG}
+		echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}"
+		exit
+	fi
 }
 
 # do not interrupt helm while it is running, or it will likely leave the release in a pending state
@@ -192,11 +207,11 @@ if [[ -f "/tmp/ca-file.pem" ]]; then
 fi
 
 if [[ "${INSECURE_SKIP_TLS_VERIFY}" == "true" ]]; then
-  INSECURE_TLS_ARG="--insecure-skip-tls-verify"
+	INSECURE_TLS_ARG="--insecure-skip-tls-verify"
 fi
 
 if [[ "${PLAIN_HTTP}" == "true" ]]; then
-  PLAIN_HTTP_ARG="--plain-http"
+	PLAIN_HTTP_ARG="--plain-http"
 fi
 
 if [[ -n "${TIMEOUT}" ]]; then
@@ -204,7 +219,7 @@ if [[ -n "${TIMEOUT}" ]]; then
 fi
 
 if [[ -n "${CONFIG_HASH}" ]]; then
-  LABELS_ARG="--labels ${CONFIG_HASH_KEY}=${CONFIG_HASH}"
+	LABELS_ARG="--labels ${CONFIG_HASH_KEY}=${CONFIG_HASH}"
 fi
 
 helm_content_decode
