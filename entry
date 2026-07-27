@@ -1,17 +1,18 @@
 #!/bin/bash
 
 helm_update() {
-	LINE="$(${HELM} ls -f "^${NAME}\$" --namespace ${TARGET_NAMESPACE} --output json | jq -r "${JQ_RELEASE_EXPRESSION}" | tr '[:upper:]' '[:lower:]')"
-	read -r INSTALLED_VERSION STATUS REVISION _ <<<${LINE}
-	VALUES=""
+	read -r STATUS REVISION APPLY_METHOD _ <<< "$(${HELM} status --namespace ${TARGET_NAMESPACE} ${NAME} --output json | jq -r "${JQ_RELEASE_EXPRESSION}")"
 
+	SSA_ARGS="$(get_ssa_args "${REVISION}" "${APPLY_METHOD}" "${SERVER_SIDE}" "${FORCE_CONFLICTS}")"
+
+	VALUES=""
 	for VALUES_FILE in /config/*.yaml; do
 		VALUES="${VALUES} --values ${VALUES_FILE}"
 	done
 
 	# Uninstall or delete chart if asked to delete and the chart was found; otherwise no-op
 	if [[ "$1" = "delete" ]]; then
-		if [[ -z "${INSTALLED_VERSION}" ]]; then
+		if [[ -z "${REVISION}" ]]; then
 			echo "No ${HELM} chart installed; nothing to delete" >> ${TERM_LOG}
 			exit
 		fi
@@ -24,9 +25,9 @@ helm_update() {
 	fi
 
 	# No current version and status, safe to install
-	if [[ "${INSTALLED_VERSION}" =~ ^(|null)$ ]] && [[ "${STATUS}" =~ ^(|null)$ ]]; then
+	if [[ -z "${REVISION}" ]] && [[ -z "${STATUS}" ]]; then
 		echo "Installing ${HELM} chart" >> ${TERM_LOG}
-		${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
+		${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${SSA_ARGS} ${VALUES}
 		exit
 	fi
 
@@ -36,7 +37,7 @@ helm_update() {
 	if [[ "${STATUS}" =~ ^(pending-install|pending-upgrade|pending-rollback|superseded|uninstalling)$ ]]; then
 		echo Previous helm job was interrupted, updating status from ${STATUS} to failed
 		echo "Resetting ${HELM} release status from '${STATUS}' to 'failed'" >> ${TERM_LOG}
-		${HELM} set-status ${NAME} failed --namespace ${TARGET_NAMESPACE}
+		${HELM} set-status --namespace ${TARGET_NAMESPACE} ${NAME} failed
 
 		# Upgrades can be retried; install and rollback will be handled as failure below.
 		# If release state is superseded, chart deployment might be correct, try an upgrade first.
@@ -45,7 +46,7 @@ helm_update() {
 			echo "Retrying upgrade of ${HELM} chart" >> ${TERM_LOG}
 			echo "Retrying upgrade of ${NAME}"
 			shift 1
-			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
+			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${SSA_ARGS} ${VALUES}
 			exit
 		else
 			STATUS=failed
@@ -60,7 +61,7 @@ helm_update() {
 		echo "Upgrading ${HELM} chart" >> ${TERM_LOG}
 		echo "Upgrading ${NAME}"
 		shift 1
-		${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
+		${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${SSA_ARGS} ${VALUES}
 		exit
 	fi
 
@@ -77,15 +78,16 @@ helm_update() {
 			${HELM} uninstall ${NAME} --namespace ${TARGET_NAMESPACE} --wait
 			echo Deleted
 			# Try installing now that we've uninstalled
+			SSA_ARGS="$(get_ssa_args "" "" "${SERVER_SIDE}" "${FORCE_CONFLICTS}")"
 			echo "Installing ${HELM} chart" >> ${TERM_LOG}
-			${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
+			${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${SSA_ARGS} ${VALUES}
 			exit
 			;;
 		"retry")
 			# Try upgrading again, in hope that the failure has been resolved
 			echo "Upgrading ${NAME} from failed state" >> ${TERM_LOG}
 			shift 1
-			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
+			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${SSA_ARGS} ${VALUES}
 			exit 0
 			;;
 		*)
@@ -98,7 +100,7 @@ helm_update() {
 
 	# No special status handling necessary, do whatever we were asked to do
 	echo "Installing ${HELM} chart" >> ${TERM_LOG}
-	${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${VALUES}
+	${HELM} "$@" ${NAME_ARG} ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${SSA_ARGS} ${VALUES}
 }
 
 helm_repo_init() {
@@ -145,12 +147,45 @@ helm_content_decode() {
 }
 
 check_revision() {
+	set -e
 	REVISION="$1"
 	if [[ -n "${EXPECTED_RELEASE_REVISION}" ]] && [[ "${EXPECTED_RELEASE_REVISION}" != "${REVISION}" ]]; then
 		echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}" >> ${TERM_LOG}
 		echo "Current release revision ${REVISION} does not match expected revision ${EXPECTED_RELEASE_REVISION}"
 		exit
 	fi
+	set +e
+}
+
+get_ssa_args() {
+	set -e
+	REVISION="$1"
+	APPLY_METHOD="$2"
+	SERVER_SIDE="$3"
+	FORCE_CONFLICTS="$4"
+
+	# --server-side only supports true/false when installing; replace auto with true
+	# if no revision is currently installed.
+	if [[ -z "${REVISION}" ]] && [[ "${SERVER_SIDE}" =~ ^auto$ ]]; then
+		SERVER_SIDE="true"
+	fi
+
+	# --force-conflicts cannot be set if --server-side is false; disable it if SSA is false,
+	# or will auto to false.
+	if [[ "${FORCE_CONFLICTS}" =~ ^true$ ]]; then
+		if [[ "${SERVER_SIDE}" == ^false$ ]] || { [[ "${SERVER_SIDE}" =~ ^auto$ ]] && [[ ! "${APPLY_METHOD}" =~ ^ssa$ ]]; }; then
+			FORCE_CONFLICTS="false"
+		fi
+	fi
+
+	if [[ -n "${SERVER_SIDE}" ]]; then
+		echo -n "--server-side=${SERVER_SIDE} "
+	fi
+	if [[ -n "${FORCE_CONFLICTS}" ]]; then
+		echo -n "--force-conflicts=${FORCE_CONFLICTS} "
+	fi
+	echo
+	set +e
 }
 
 # do not interrupt helm while it is running, or it will likely leave the release in a pending state
@@ -171,8 +206,9 @@ PLAIN_HTTP_ARG=""
 TIMEOUT_ARG=""
 PASS_CREDENTIALS_ARG=""
 LABELS_ARG=""
+SSA_ARGS=""
 CONFIG_HASH_KEY="helmcharts.helm.cattle.io/configHash"
-JQ_RELEASE_EXPRESSION='first|[.chart,.status,.revision]|@tsv'
+JQ_RELEASE_EXPRESSION='[.info.status,.version,.apply_method]|@tsv'
 
 set -e -v
 if [[ ${KUBERNETES_SERVICE_HOST} =~ .*:.* ]]; then
@@ -197,7 +233,7 @@ if [[ -f "${CA_FILE}" ]]; then
 	cat "${CA_FILE}" >> /tmp/ca-file.pem
 fi
 
-for CA_FILE in ${CA_DIR}/*; do
+for CA_FILE in "${CA_DIR}"/*; do
 	echo >> /tmp/ca-file.pem
 	cat "${CA_FILE}" >> /tmp/ca-file.pem
 done
