@@ -17,3 +17,7 @@
 # golang.org/x/mod: CVE-2026-56864, CVE-2026-56865 (unbounded resource use parsing crafted module files).
 # Drop once upstream Helm requires golang.org/x/mod >= v0.40.0.
 -replace golang.org/x/mod=golang.org/x/mod@v0.40.0
+
+# oras.land/oras-go/v2: CVE-2026-50151, CVE-2026-50162, CVE-2026-50163, CVE-2026-48978, GHSA-vh4v-2xq2-g5cg.
+# Drop once upstream Helm requires oras.land/oras-go/v2 >= v2.6.2.
+-replace oras.land/oras-go/v2=oras.land/oras-go/v2@v2.6.2
