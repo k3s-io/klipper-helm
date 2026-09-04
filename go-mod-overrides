@@ -13,3 +13,7 @@
 # golang.org/x/text: CVE-2026-56852 (HIGH, DoS via invalid UTF-8 input).
 # Drop once upstream Helm requires golang.org/x/text >= v0.39.0.
 -replace golang.org/x/text=golang.org/x/text@v0.39.0
+
+# golang.org/x/mod: CVE-2026-56864, CVE-2026-56865 (unbounded resource use parsing crafted module files).
+# Drop once upstream Helm requires golang.org/x/mod >= v0.40.0.
+-replace golang.org/x/mod=golang.org/x/mod@v0.40.0
