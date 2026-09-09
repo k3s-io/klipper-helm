@@ -1,5 +1,23 @@
 # go.mod overrides applied at build time. See scripts/go-mod-overrides.sh.
 
-# golang.org/x/net: CVE-2026-33814 (net/http2 DoS), CVE-2026-39821 (x/net/idna punycode).
-# Drop once upstream Helm requires golang.org/x/net >= v0.55.0.
--replace golang.org/x/net=golang.org/x/net@v0.55.0
+# golang.org/x/net: CVE-2026-33814 (net/http2 DoS), CVE-2026-39821 (x/net/idna punycode),
+# CVE-2026-46600 (x/net/dns/dnsmessage DoS parsing invalid DNS records).
+# Drop once upstream Helm requires golang.org/x/net >= v0.56.0.
+-replace golang.org/x/net=golang.org/x/net@v0.56.0
+
+# golang.org/x/crypto: CVE-2026-56854 (CRITICAL, ssh source-address auth bypass), CVE-2026-56855/78662 (ssh channel DoS),
+# plus the v0.52.0 ssh fixes (CVE-2026-39827 through CVE-2026-46598) — golang.org/x/crypto/ssh.
+# Drop once upstream Helm requires golang.org/x/crypto >= v0.56.0.
+-replace golang.org/x/crypto=golang.org/x/crypto@v0.56.0
+
+# golang.org/x/text: CVE-2026-56852 (HIGH, DoS via invalid UTF-8 input).
+# Drop once upstream Helm requires golang.org/x/text >= v0.39.0.
+-replace golang.org/x/text=golang.org/x/text@v0.39.0
+
+# golang.org/x/mod: CVE-2026-56864, CVE-2026-56865 (unbounded resource use parsing crafted module files).
+# Drop once upstream Helm requires golang.org/x/mod >= v0.40.0.
+-replace golang.org/x/mod=golang.org/x/mod@v0.40.0
+
+# oras.land/oras-go/v2: CVE-2026-50151, CVE-2026-50162, CVE-2026-50163, CVE-2026-48978, GHSA-vh4v-2xq2-g5cg.
+# Drop once upstream Helm requires oras.land/oras-go/v2 >= v2.6.2.
+-replace oras.land/oras-go/v2=oras.land/oras-go/v2@v2.6.2
