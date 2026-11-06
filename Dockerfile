@@ -3,7 +3,7 @@ ARG HELM_COMMIT=c0d08d0d6d9424d4a14febb5e8a3e51b0dd00dff
 
 FROM --platform=$BUILDPLATFORM alpine:3.24 AS helm-src
 ARG HELM_VERSION=v4.3.1
-ARG HELM_COMMIT
+ARG HELM_COMMIT=c0d08d0d6d9424d4a14febb5e8a3e51b0dd00dff
 RUN apk add --no-cache git
 RUN git clone --branch "${HELM_VERSION}" --depth 1 https://github.com/helm/helm.git /src/helm && \
     GIT_COMMIT="$(git -C /src/helm rev-parse HEAD)" && \
