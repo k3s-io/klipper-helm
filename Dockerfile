@@ -2,8 +2,8 @@ ARG HELM_VERSION=v4.3.1
 ARG HELM_COMMIT=c0d08d0d6d9424d4a14febb5e8a3e51b0dd00dff
 
 FROM --platform=$BUILDPLATFORM alpine:3.24 AS helm-src
-ARG HELM_VERSION
-ARG HELM_COMMIT
+ARG HELM_VERSION=v4.3.1
+ARG HELM_COMMIT=c0d08d0d6d9424d4a14febb5e8a3e51b0dd00dff
 RUN apk add --no-cache git
 RUN git clone --branch "${HELM_VERSION}" --depth 1 https://github.com/helm/helm.git /src/helm && \
     GIT_COMMIT="$(git -C /src/helm rev-parse HEAD)" && \
@@ -18,7 +18,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
 ARG TARGETPLATFORM
-ARG HELM_VERSION
+ARG HELM_VERSION=v4.3.1
 COPY --from=helm-src /src/helm /src/helm
 # Apply tracked go.mod CVE overrides on top of the upstream Helm module before
 # building. See go-mod-overrides / scripts/go-mod-overrides.sh.
@@ -56,7 +56,7 @@ FROM --platform=$BUILDPLATFORM golang:1.27-alpine3.24 AS plugins
 ARG TARGETPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
-ARG HELM_VERSION
+ARG HELM_VERSION=v4.3.1
 COPY --from=helm /usr/bin/helm /usr/bin/helm
 RUN apk add -U --no-cache curl ca-certificates make git
 RUN go version
