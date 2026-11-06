@@ -1,0 +1,71 @@
+name: "Update Helm version and commit"
+
+scms:
+  klipper-helm:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ requiredEnv .github.username }}"
+      token: '{{ requiredEnv .github.token }}'
+      owner: "k3s-io"
+      repository: "klipper-helm"
+      branch: "{{ .github.branch }}"
+
+sources:
+  helmVersion:
+    name: "Latest Helm v4 release"
+    kind: "gittag"
+    spec:
+      url: "https://github.com/helm/helm.git"
+      lsremote: true
+      versionfilter:
+        kind: "semver"
+        pattern: ">=4.1.4 <5.0.0"
+
+  helmCommit:
+    name: "Commit for selected Helm release"
+    kind: "gittag"
+    dependson:
+      - source#helmVersion
+    spec:
+      url: "https://github.com/helm/helm.git"
+      lsremote: false
+      key: "hash"
+      versionfilter:
+        kind: "latest"
+        pattern: '{{ source `helmVersion` }}'
+
+targets:
+  updateHelmVersion:
+    name: "Update Helm version"
+    kind: "dockerfile"
+    scmid: "klipper-helm"
+    sourceid: "helmVersion"
+    spec:
+      file: "Dockerfile"
+      instruction:
+        keyword: "ARG"
+        matcher: "HELM_VERSION"
+
+  updateHelmCommit:
+    name: "Update Helm commit"
+    kind: "dockerfile"
+    scmid: "klipper-helm"
+    sourceid: "helmCommit"
+    spec:
+      file: "Dockerfile"
+      instruction:
+        keyword: "ARG"
+        matcher: "HELM_COMMIT"
+
+actions:
+  github:
+    kind: "github/pullrequest"
+    scmid: "klipper-helm"
+    spec:
+      merge:
+        strategy: manual
+      draft: false
+      mergemethod: squash
+      parent: false
