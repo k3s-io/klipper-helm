@@ -7,3 +7,5 @@
 # CVE-2026-78659 / CVE-2026-78660 (http2 trailer / malformed framing handling).
 # Drop once upstream Helm requires golang.org/x/net >= v0.62.0.
 -replace golang.org/x/net=golang.org/x/net@v0.62.0
+# golang.org/x/crypto: GO-2026-5932. Drop once Helm requires >= v0.59.0.
+-replace golang.org/x/crypto=golang.org/x/crypto@v0.59.0
