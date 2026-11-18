@@ -87,8 +87,13 @@ helm_update() {
 			# Try upgrading again, in hope that the failure has been resolved
 			echo "Upgrading ${NAME} from failed state" >> ${TERM_LOG}
 			shift 1
-			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${SSA_ARGS} ${VALUES}
-			exit 0
+			${HELM} upgrade "$@" ${NAME} "${CHART}" ${CA_FILE_ARG} ${INSECURE_TLS_ARG} ${PLAIN_HTTP_ARG} ${TIMEOUT_ARG} ${LABELS_ARG} ${SSA_ARGS} ${VALUES} && exit
+			# A new failed release ends the job in check_revision and helm-controller retries; without one, fail so the pod is retried
+			read -r _ REVISION _ <<< "$(${HELM} status --namespace ${TARGET_NAMESPACE} ${NAME} --output json | jq -r "${JQ_RELEASE_EXPRESSION}")"
+			if [[ -n "${REVISION}" ]]; then
+				check_revision ${REVISION}
+			fi
+			exit 1
 			;;
 		*)
 			echo "Unknown failure policy '${FAILURE_POLICY}'" >> ${TERM_LOG}
